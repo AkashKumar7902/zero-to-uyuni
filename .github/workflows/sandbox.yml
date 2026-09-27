@@ -80,7 +80,7 @@ jobs:
         env: {NICK: "${{ inputs.nick }}"}
         run: |
           sudo install -d -m 0755 /root/osas26
-          sudo cp zero-to-uyuni/assets/* /root/osas26/ && sudo cp se/server.env /root/osas26/server.env && sudo chmod +x /root/osas26/*.sh
+          sudo cp zero-to-uyuni/assets/* /root/osas26/ && sudo cp se/server.env /root/osas26/server.env && sudo sh -c 'chmod +x /root/osas26/*.sh'
           t0=$(date +%s); sudo bash /root/osas26/preinstall.sh > preinstall.log 2>&1; echo "preinstall.sh: $(( $(date +%s) - t0 )) s (exit $?)"; tail -3 preinstall.log
           t0=$(date +%s)
           sudo env SERVER_ENV_URL=file:///root/osas26/server.env bash /root/osas26/join.sh "$NICK" 2>&1 | tee join.log
