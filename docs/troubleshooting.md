@@ -40,5 +40,6 @@ Start with `bash /root/zero-to-uyuni/lab/check.sh`: every FAIL line names its fi
 | accepted but not registered | give it 10-60 s (Uyuni's registration queue); `kubectl -n uyuni exec deploy/uyuni -c uyuni -- tail -50 /var/log/rhn/rhn_web_ui.log` |
 | two sandboxes collapse into one system | the same machine-id: `join.sh` writes a fresh one; clones must never share it |
 | Level 4 CHECK says "restart the minion" | the config was fixed but Salt reads it only at start: `systemctl restart venv-salt-minion` |
+| after joining, `apt install` finds nothing in the sandbox | expected: registration applies Uyuni's `channels` state, which disables the machine's own apt sources (`Enabled: no`) and installs HQ's CA under `/usr/local/share/ca-certificates/susemanager/`; a client gets its software from HQ's channels. The lab's sandboxes have no channels on purpose |
 | `cleanup.sh` refuses | record the counts first (`d-savecounts`), or `FORCE=1` in a rehearsal |
 | the system list still shows deleted systems | deletion is asynchronous and spacecmd caches the list: `cleanup.sh` waits and runs `clear_caches` |

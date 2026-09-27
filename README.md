@@ -94,6 +94,7 @@ tmux attach -t build                               # detach: Ctrl-b d. The build
 | `50-content.sh` | groups, the crew-card state channel, activation keys `1-osas26-fleet` / `1-osas26-demo`, the bootstrap script | cp6 |
 | `check.sh` | the daily health check: pods, getVersion, cluster DNS, disk, Taskomatic, keys, the guard and the window, sshd | — |
 
+The whole build took **15 min 37 s** unattended on a 6 vCPU / 16 GB VM (about half of it downloads).
 `FROM=30 bash lab/build.sh` resumes at a step. Every step appends `phase<TAB>time` to `/root/osas26/timings.tsv`;
 [`docs/timings.md`](docs/timings.md) has measured numbers. When something breaks: [`docs/troubleshooting.md`](docs/troubleshooting.md).
 
