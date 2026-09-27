@@ -85,7 +85,10 @@ After HQ is up:
 - The **guard** (`osas26-hqtable-guard`) **rejects** every further attendee key once CAP are trusted. The minion is
   told at once (Salt 3006 logs "The Salt Master has rejected this minion's public key" and stops).
 - leap-a/leap-b and any other id are never touched.
-- The refused sandbox's answer is its own HQ: `join.sh --solo`, 3 s.
+- The refused sandbox's answer is its own HQ: `join.sh --solo`, 3 s. The kit does it by itself: `join.sh --hq`
+  starts `attendee/hqwatch.sh`, which moves the sandbox to its own HQ (with a note in its terminal) when HQ says no,
+  has not said yes after 10 minutes, or goes quiet (3 failed Salt knocks on 4506, 30 s apart). `MODE=solo`
+  sandboxes never run it.
 
 ## Game hooks
 
@@ -107,6 +110,7 @@ door.sh ui [--check|--open]  # the UI tunnel 127.0.0.1:18443 -> HQ:443 (backgrou
 door.sh pass                 # the admin password to the clipboard for 45 s (never printed)
 door.sh leapb [accept|reset|status]   # leap-b's live bootstrap + fingerprint tail
 door.sh env                  # the day's server.env as one paste-able command (the speaker's own sandbox)
+door.sh finale-files [--check]   # the golden-only finale files (Mac only) to /root/osas26, sha256-checked; mac/README.md
 door.sh stop [hq]            # stop the UI tunnel; `stop hq` ends the HQ run cleanly (asks first)
 ```
 

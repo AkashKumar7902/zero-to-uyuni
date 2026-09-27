@@ -17,9 +17,14 @@
 #   door.sh leapb [accept|reset|status]   the live bootstrap of leap-b (cue 11) and its fingerprint's last two pairs;
 #                              accept = the fallback of the UI's Accept (cue 13); reset = back to "never registered"
 #   door.sh env                the HQ table's server.env as one paste-able command (for the speaker's own sandbox)
+#   door.sh finale-files [--check]   the golden-only finale files to HQ (never in this public repo before Oct 3
+#                              evening), idempotent, each one checked by sha256 on both sides; --check copies nothing:
+#                              kit/golden/aliases-final.sh -> /root/osas26/finale-aliases.sh (lab/aliases.sh sources it),
+#                              ~/osas26-kit/credits-extra.txt -> /root/osas26/credits-extra.txt (lab/credits.sh reads it)
 #   door.sh stop [hq]          stop this Mac's UI tunnel; `stop hq`: end the HQ run cleanly (asks first; logs upload)
 #   door.sh proxy cf|bore      (ssh's ProxyCommand) connect to HQ's current door
-# Env: REPO (default AkashKumar7902/zero-to-uyuni), DOOR_HOME (default ~/osas26-kit/door), SSH_KEY (~/.ssh/osas26_ed25519)
+# Env: REPO (default AkashKumar7902/zero-to-uyuni), DOOR_HOME (default ~/osas26-kit/door), SSH_KEY (~/.ssh/osas26_ed25519),
+#      FINALE_DIR (default ~/osas26-kit: credits-extra.txt, and finale-aliases.sh when the workshop kit is not here)
 set -uo pipefail
 REPO=${REPO:-AkashKumar7902/zero-to-uyuni}
 DH=${DOOR_HOME:-$HOME/osas26-kit/door}; ST=$DH/state; DE=$ST/doors.env; KH=$ST/known_hosts
@@ -231,6 +236,38 @@ envline(){ need_doors; local h s; h=$(pick) || die "no door answers"
   echo "# paste into the speaker's own sandbox (the HQ table), then: /root/osas26/join.sh --hq akash"
   printf "cat > /root/osas26/server.env <<'EOF'\n%s\nEOF\n" "$(grep -v '^#' <<<"$s")"; }
 
+# The finale files name the final case's answer or thank people by name: they live on this Mac only (the workshop kit
+# and ~/osas26-kit) and go to HQ over the door. Nothing here prints their content: names, sizes and hashes only.
+FINALE_DIR=${FINALE_DIR:-$HOME/osas26-kit}
+finale_src(){   # aliases|credits -> the Mac's copy (nothing = not on this Mac)
+  local f
+  case $1 in
+    aliases) for f in "$HOME/osas26-workshop/kit/golden/aliases-final.sh" "$FINALE_DIR/finale-aliases.sh"; do
+               [ -s "$f" ] && { echo "$f"; return 0; }; done ;;
+    credits) [ -s "$FINALE_DIR/credits-extra.txt" ] && echo "$FINALE_DIR/credits-extra.txt" ;;
+  esac; return 0; }
+finale(){
+  need_doors; local h k src dst l r bad=0
+  [ "${1:-}" = "" ] || [ "$1" = --check ] || die "finale-files [--check]"
+  h=$(pick) || die "no door answers (door.sh status shows HQ's state)"
+  for k in aliases:/root/osas26/finale-aliases.sh credits:/root/osas26/credits-extra.txt; do
+    dst=${k#*:}; src=$(finale_src "${k%%:*}")
+    [ -n "$src" ] || { echo "  $dst: MISSING on this Mac (see door.sh's header for where it lives)"; bad=1; continue; }
+    l=$(shasum -a 256 < "$src" | cut -c1-64)
+    r=$(ssh -o BatchMode=yes "$h" "test -f $dst && sha256sum < $dst | cut -c1-64")
+    if [ "$r" = "$l" ]; then echo "  $dst: OK, the same as $src ($(wc -c < "$src" | tr -d ' ') bytes, sha256 ${l:0:12})"; continue; fi
+    if [ "${1:-}" = --check ]; then echo "  $dst: $([ -n "$r" ] && echo "DIFFERS from" || echo "NOT on HQ yet; the Mac has") $src"; bad=1; continue; fi
+    ssh -o BatchMode=yes "$h" "install -d -m 0755 /root/osas26 && cat > $dst.new && chmod 0644 $dst.new && mv -f $dst.new $dst" < "$src" \
+      || { echo "  $dst: the copy did not go through (door.sh status; then run this again)"; bad=1; continue; }
+    r=$(ssh -o BatchMode=yes "$h" "sha256sum < $dst | cut -c1-64")
+    [ "$r" = "$l" ] && echo "  $dst: copied from $src, checked (sha256 ${l:0:12})" || { echo "  $dst: copied, but HQ's sha256 differs"; bad=1; }
+  done
+  if ssh -o BatchMode=yes "$h" '. /root/zero-to-uyuni/lab/aliases.sh >/dev/null 2>&1; alias d-lock2 >/dev/null 2>&1'; then
+    echo "  HQ: a new shell or tmux window has d-lock2 and the other finale aliases (a shell opened before this needs: exec bash)"
+  else echo "  HQ: the finale aliases do not load in a new shell yet"; bad=1; fi
+  return $bad
+}
+
 stop(){
   if [ "${1:-}" = hq ]; then
     need_doors; local run; run=$(d RUN_ID)
@@ -259,6 +296,7 @@ case ${1:-} in
   pass) pass ;;
   leapb) shift; leapb "$@" ;;
   env) envline ;;
+  finale-files) shift; finale "$@" ;;
   stop) shift; stop "$@" ;;
   proxy) shift; proxy "$@" ;;
   refresh) fetch "${2:-}" && echo "doors: $(cat "$ST/artifact") ($(d HQ_STATE))" ;;
