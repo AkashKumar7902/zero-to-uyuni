@@ -7,6 +7,10 @@
 #   mode=hqwatch lab/loadtest/hqwatch-e2e.sh: the HQ table's safety net (attendee/hqwatch.sh) with real Salt against a
 #                stand-in HQ master on this runner (no HQ run needed, no door opened): HQ says yes, goes quiet, says
 #                no, never says yes; and MODE=solo runs no watcher
+#   mode=solo    this runner becomes one attendee sandbox as the Killercoda intro leaves it (systemd, root, the kit in
+#                /root/osas26, preinstall.sh run) and joins NOTHING: the attendee's own steps (crew.sh, Level 1,
+#                join.sh on MODE=solo, salt-key -a, cmd.run, state.apply, break/fix) are typed from outside over its
+#                SSH door, so a rehearsal plays "your own HQ" on a real systemd machine
 # server.env comes from the HQ run's artifact "server-env" (hq_run = its run id) or, if empty, from main.
 #   gh workflow run sandbox.yml -R AkashKumar7902/zero-to-uyuni -f hq_run=<id> -f mode=single -f nick=gha1
 # Stop early: ssh -p <port> root@bore.pub touch /root/osas26/STOP
@@ -17,7 +21,7 @@ on:
       hq_run: {description: "run id of the hq workflow whose server.env to use (empty = attendee/server.env on main)", default: "", required: false}
       mode:
         type: choice
-        options: [single, load, hqwatch]
+        options: [single, load, hqwatch, solo]
         default: single
       nick: {description: "single: the crew name (2-12, a-z 0-9)", default: "gha", required: true}
       n: {description: "load: sandboxes on this runner (1-40)", default: "30", required: true}
@@ -95,19 +99,20 @@ jobs:
           rc=0; sudo bash lab/loadtest/hqwatch-e2e.sh || rc=$?
           mkdir -p ev && sudo sh -c 'cp /tmp/hqwatch-e2e.* ev/ 2>/dev/null; cp /var/log/osas26-hq-standin*.log ev/ 2>/dev/null' || true
           exit $rc
-      - name: single - preinstall.sh + join.sh, as the Killercoda scenario runs them
-        if: inputs.mode == 'single'
-        env: {NICK: "${{ inputs.nick }}"}
+      - name: single - preinstall.sh + join.sh, as the Killercoda scenario runs them (solo - preinstall.sh only)
+        if: inputs.mode == 'single' || inputs.mode == 'solo'
+        env: {NICK: "${{ inputs.nick }}", MODE: "${{ inputs.mode }}"}
         run: |
           sudo install -d -m 0755 /root/osas26
           sudo cp zero-to-uyuni/assets/* /root/osas26/ && sudo cp se/server.env /root/osas26/server.env && sudo sh -c 'chmod +x /root/osas26/*.sh'
           t0=$(date +%s); sudo bash /root/osas26/preinstall.sh > preinstall.log 2>&1; echo "preinstall.sh: $(( $(date +%s) - t0 )) s (exit $?)"; tail -3 preinstall.log
+          if [ "$MODE" = solo ]; then echo "mode solo: no join here; the attendee's steps come over this sandbox's SSH door"; exit 0; fi
           t0=$(date +%s)
           sudo env SERVER_ENV_URL=file:///root/osas26/server.env bash /root/osas26/join.sh --hq "$NICK" 2>&1 | tee join.log   # --hq: server.env says MODE=solo (the room); this runner joins the real HQ
           echo "join.sh: $(( $(date +%s) - t0 )) s"; echo "JOIN_T0=$t0" >> "$GITHUB_ENV"
           sudo cat /etc/osas26-id
       - name: single - hold (minion state every minute)
-        if: inputs.mode == 'single'
+        if: inputs.mode == 'single' || inputs.mode == 'solo'
         env: {HOLD: "${{ inputs.hold_min }}"}
         run: |
           end=$(( $(date +%s) + HOLD * 60 ))
