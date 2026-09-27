@@ -16,8 +16,8 @@ killercoda:
 	@echo "scenario assets refreshed from attendee/"
 
 check: killercoda
-	@for f in lab/*.sh clients/*.sh attendee/*.sh $(SCEN)/*.sh; do bash -n "$$f" || exit 1; done; echo "bash -n: ok"
-	@shellcheck -S warning -x lab/*.sh clients/*.sh attendee/*.sh $(SCEN)/*.sh && echo "shellcheck (warnings): ok"
+	@for f in lab/*.sh lab/runner/*.sh clients/*.sh attendee/*.sh $(SCEN)/*.sh; do bash -n "$$f" || exit 1; done; echo "bash -n: ok"
+	@shellcheck -S warning -x lab/*.sh lab/runner/*.sh clients/*.sh attendee/*.sh $(SCEN)/*.sh && echo "shellcheck (warnings): ok"
 	@python3 -m json.tool $(SCEN)/index.json >/dev/null && echo "index.json: valid"
 	@git diff --quiet -- $(SCEN) || { echo "the scenario copies changed: commit them"; git status --short -- $(SCEN); }
 	@bash lab/lint-server-env.sh attendee/server.env

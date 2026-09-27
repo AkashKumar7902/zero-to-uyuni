@@ -40,24 +40,32 @@ if [ -n "$keys" ]; then
 else bad "salt-key did not answer"; fi
 code=$(curl -sk -o /dev/null -m 15 -w '%{http_code}' "https://${FQDN}/cobbler_api"); [ "$code" = 403 ] && ok "cobbler_api 403" || bad "cobbler_api $code (want 403)"
 # --- the host guard and the Salt window (FREE-GOLDEN §6.5: the guard is the only barrier for 443)
-if nft list table inet osas26_guard >/dev/null 2>&1; then
-  gi=$(nft list chain inet osas26_guard pre 2>/dev/null | sed -n 's/.*iifname != "\([^"]*\)".*/\1/p' | head -1)
-  [ "$gi" = "$PUB_IF" ] && ok "guard present on $gi (80/443 and the RKE2 ports closed there)" || bad "guard filters '$gi', but the public interface is $PUB_IF"
-else bad "guard ABSENT: systemctl restart osas26-guard (80/443 may be public!)"; fi
-systemctl is-enabled --quiet osas26-guard.service && ok "guard enabled at boot" || bad "osas26-guard.service is not enabled"
-systemctl show rke2-server -p Requires --value | grep -qw osas26-guard.service && ok "rke2-server Requires the guard" || bad "rke2-server does not Require osas26-guard.service"
 np=$(kubectl get svc -A --no-headers 2>/dev/null | grep -c NodePort || true); [ "$np" = 0 ] && ok "no NodePort services" || bad "$np NodePort service(s)"
-if nft list set inet osas26_guard salt_ok 2>/dev/null | grep -q '0\.0\.0\.0/0'; then
-  now=$(date -u +%s); s=$(date -u -d '2026-10-03 06:25:00 UTC' +%s); e=$(date -u -d '2026-10-03 10:30:00 UTC' +%s)
-  if [ "$now" -ge "$s" ] && [ "$now" -lt "$e" ]; then ok "Salt window OPEN (the show window)"
-  elif systemctl is-active --quiet osas26-salt-autoclose.timer; then info "Salt window OPEN for a test (auto-close pending)"
-  else bad "Salt window OPEN outside the show window with no auto-close: osas26-salt-window close"; fi
-else ok "Salt window CLOSED"; fi
-lok=$(nft list set inet osas26_guard lab_ok 2>/dev/null | sed -n 's/.*elements = { \(.*\) }.*/\1/p'); info "lab_ok (demo VMs): ${lok:-none}"
-for tm in osas26-salt-open osas26-accept osas26-salt-close; do
-  nx=$(systemctl show "$tm.timer" -p NextElapseUSecRealtime --value 2>/dev/null)
-  if systemctl is-enabled --quiet "$tm.timer" 2>/dev/null; then info "timer $tm: next ${nx:-none}"; else info "timer $tm: NOT enabled"; fi
-done
+if [ "${RUNNER:-0}" = 1 ]; then
+  # a GitHub runner (lab/runner/): no inbound path but the relay's tunnels (4505, 4506, 22), so no guard to check
+  if [ -s "$W/relay.env" ]; then info "runner: no host guard; relay doors: $(sed -n 's/^\(SALT_PUB_PORT\|SALT_REQ_PORT\|SSH_PORT\|RELAY_SERVER\)=//p' "$W/relay.env" | tr '\n' ' ')"
+  else info "runner: no host guard; relay not started"; fi
+  for u in salt-pub salt-req ssh; do systemctl is-active --quiet "osas26-relay@$u.service" && info "relay door $u: $(cat /run/osas26-relay/$u.probe 2>/dev/null || echo 'no probe yet')"; done
+  systemctl is-enabled --quiet osas26-accept.timer 2>/dev/null && info "timer osas26-accept: next $(systemctl show osas26-accept.timer -p NextElapseUSecRealtime --value 2>/dev/null)"
+else
+  if nft list table inet osas26_guard >/dev/null 2>&1; then
+    gi=$(nft list chain inet osas26_guard pre 2>/dev/null | sed -n 's/.*iifname != "\([^"]*\)".*/\1/p' | head -1)
+    [ "$gi" = "$PUB_IF" ] && ok "guard present on $gi (80/443 and the RKE2 ports closed there)" || bad "guard filters '$gi', but the public interface is $PUB_IF"
+  else bad "guard ABSENT: systemctl restart osas26-guard (80/443 may be public!)"; fi
+  systemctl is-enabled --quiet osas26-guard.service && ok "guard enabled at boot" || bad "osas26-guard.service is not enabled"
+  systemctl show rke2-server -p Requires --value | grep -qw osas26-guard.service && ok "rke2-server Requires the guard" || bad "rke2-server does not Require osas26-guard.service"
+  if nft list set inet osas26_guard salt_ok 2>/dev/null | grep -q '0\.0\.0\.0/0'; then
+    now=$(date -u +%s); s=$(date -u -d '2026-10-03 06:25:00 UTC' +%s); e=$(date -u -d '2026-10-03 10:30:00 UTC' +%s)
+    if [ "$now" -ge "$s" ] && [ "$now" -lt "$e" ]; then ok "Salt window OPEN (the show window)"
+    elif systemctl is-active --quiet osas26-salt-autoclose.timer; then info "Salt window OPEN for a test (auto-close pending)"
+    else bad "Salt window OPEN outside the show window with no auto-close: osas26-salt-window close"; fi
+  else ok "Salt window CLOSED"; fi
+  lok=$(nft list set inet osas26_guard lab_ok 2>/dev/null | sed -n 's/.*elements = { \(.*\) }.*/\1/p'); info "lab_ok (demo VMs): ${lok:-none}"
+  for tm in osas26-salt-open osas26-accept osas26-salt-close; do
+    nx=$(systemctl show "$tm.timer" -p NextElapseUSecRealtime --value 2>/dev/null)
+    if systemctl is-enabled --quiet "$tm.timer" 2>/dev/null; then info "timer $tm: next ${nx:-none}"; else info "timer $tm: NOT enabled"; fi
+  done
+fi
 # --- ssh stays key-only
 ST=$(sshd -T 2>/dev/null)   # captured: `sshd -T | grep -q` under pipefail fails on SIGPIPE
 grep -qx 'passwordauthentication no' <<<"$ST" && grep -qx 'kbdinteractiveauthentication no' <<<"$ST" \

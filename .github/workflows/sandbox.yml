@@ -1,0 +1,104 @@
+# A test sandbox on a SECOND GitHub runner (a cloud network, like Killercoda's), joining RUNNER-HQ through its relay.
+#   mode=single  this runner becomes one attendee sandbox: the kit's preinstall.sh + join.sh <nick>, exactly as the
+#                Killercoda scenario runs them (systemd, root), then holds; its own SSH door (key-only, the osas26 key)
+#                is in the job summary, so the break/fix drill can be driven from outside
+#   mode=load    lab/load-test.sh: N synthetic sandboxes (containers from lab/loadtest/Containerfile) join, hold, and
+#                an optional outage storm (every minion down for 90 s at minute STORM)
+# server.env comes from the HQ run's artifact "server-env" (hq_run = its run id) or, if empty, from main.
+#   gh workflow run sandbox.yml -R AkashKumar7902/zero-to-uyuni -f hq_run=<id> -f mode=single -f nick=gha1
+# Stop early: ssh -p <port> root@bore.pub touch /root/osas26/STOP
+name: sandbox
+on:
+  workflow_dispatch:
+    inputs:
+      hq_run: {description: "run id of the hq workflow whose server.env to use (empty = attendee/server.env on main)", default: "", required: false}
+      mode:
+        type: choice
+        options: [single, load]
+        default: single
+      nick: {description: "single: the crew name (2-12, a-z 0-9)", default: "gha", required: true}
+      n: {description: "load: sandboxes on this runner (1-40)", default: "30", required: true}
+      hold_min: {description: "minutes to hold", default: "60", required: true}
+      storm_at: {description: "load: minute of the outage storm (empty = none)", default: "", required: false}
+permissions:
+  contents: read
+  actions: read       # the HQ run's artifact
+jobs:
+  sandbox:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - name: server.env
+        env: {GH_TOKEN: "${{ github.token }}", HQ_RUN: "${{ inputs.hq_run }}"}
+        run: |
+          mkdir -p se
+          if [ -n "$HQ_RUN" ]; then gh run download "$HQ_RUN" -R "${{ github.repository }}" -n server-env -D se
+          else cp attendee/server.env se/server.env; fi
+          bash lab/lint-server-env.sh se/server.env; grep -v '^#' se/server.env
+          echo "RELAY_HOST=$(sed -n 's/^RELAY=//p' se/server.env)" >> "$GITHUB_ENV"
+          echo "HQ_IP=$(sed -n 's/^SERVER_IP=//p' se/server.env)" >> "$GITHUB_ENV"
+      - name: facts and the path to HQ's doors
+        run: |
+          echo "runner: $(nproc) vCPU, $(free -g | awk '/^Mem:/{print $2}') GiB, egress IPv4 $(curl -s -m 5 https://api.ipify.org || echo ?)"
+          curl -s -m 3 -H Metadata:true 'http://169.254.169.254/metadata/instance/compute?api-version=2021-02-01' | jq -r '"azure: \(.location) \(.vmSize)"' || true
+          for p in 4505 4506; do python3 - "$HQ_IP" "$p" <<'PY' || echo "door $p: probe error"
+          import socket, sys, time
+          h, p = sys.argv[1], int(sys.argv[2]); r = []
+          for _ in range(5):
+              t = time.monotonic()
+              try:
+                  s = socket.create_connection((h, p), timeout=8); s.settimeout(8)
+                  s.sendall(b'\xff' + b'\x00' * 8 + b'\x7f'); ok = s.recv(1) == b'\xff'; s.close()
+              except OSError:
+                  ok = False
+              r.append(round((time.monotonic() - t) * 1000) if ok else -1)
+          print(f"door {p}: ZMTP greeting back in {r} ms (TCP connect + relay + HQ; -1 = no answer)")
+          PY
+          done
+          ping -c 5 -q "$HQ_IP" | tail -1 || true
+      - name: the sandbox's own SSH door (key-only; to drive the drill from outside)
+        run: |
+          sudo install -d -m 0755 /etc/osas26 /run/sshd /etc/ssh/sshd_config.d
+          printf 'PasswordAuthentication no\nKbdInteractiveAuthentication no\nPermitRootLogin prohibit-password\n' | sudo tee /etc/ssh/sshd_config.d/00-osas26.conf >/dev/null
+          sudo sshd -t && { sudo systemctl restart ssh.socket 2>/dev/null || sudo systemctl restart ssh; }
+          sudo install -d -m 0700 /root/.ssh && sudo cp lab/runner/osas26_ed25519.pub /root/.ssh/authorized_keys && sudo chmod 600 /root/.ssh/authorized_keys
+          printf 'RELAY_SERVER=bore.pub\nSALT_FIXED=0\nSSH_WANT=0\n' | sudo tee /etc/osas26/relay.conf >/dev/null
+          sudo bash lab/runner/relay.sh install && sudo bash lab/runner/relay.sh up ssh
+          p=$(sudo sed -n 's/^SSH_PORT=//p' /root/osas26/relay.env); hk=$(sudo sed -n 's/^SSH_HOSTKEY=//p' /root/osas26/relay.env)
+          echo "### sandbox SSH: \`ssh -i ~/.ssh/osas26_ed25519 -p $p root@bore.pub\` (host key $hk)" >> "$GITHUB_STEP_SUMMARY"
+      - name: single - preinstall.sh + join.sh, as the Killercoda scenario runs them
+        if: inputs.mode == 'single'
+        env: {NICK: "${{ inputs.nick }}"}
+        run: |
+          sudo install -d -m 0755 /root/osas26
+          sudo cp zero-to-uyuni/assets/* /root/osas26/ && sudo cp se/server.env /root/osas26/server.env && sudo chmod +x /root/osas26/*.sh
+          t0=$(date +%s); sudo bash /root/osas26/preinstall.sh > preinstall.log 2>&1; echo "preinstall.sh: $(( $(date +%s) - t0 )) s (exit $?)"; tail -3 preinstall.log
+          t0=$(date +%s)
+          sudo env SERVER_ENV_URL=file:///root/osas26/server.env bash /root/osas26/join.sh "$NICK" 2>&1 | tee join.log
+          echo "join.sh: $(( $(date +%s) - t0 )) s"; echo "JOIN_T0=$t0" >> "$GITHUB_ENV"
+          sudo cat /etc/osas26-id
+      - name: single - hold (minion state every minute)
+        if: inputs.mode == 'single'
+        env: {HOLD: "${{ inputs.hold_min }}"}
+        run: |
+          end=$(( $(date +%s) + HOLD * 60 ))
+          while [ "$(date +%s)" -lt "$end" ] && ! sudo test -e /root/osas26/STOP; do
+            printf '%s minion=%s pub_conns=%s req_conns=%s card=%s\n' "$(date -u +%T)" "$(systemctl is-active venv-salt-minion)" \
+              "$(ss -Htn state established '( dport = :4505 )' | wc -l)" "$(ss -Htn state established '( dport = :4506 )' | wc -l)" \
+              "$(sudo grep -q 'GEEKO CORP' /etc/motd 2>/dev/null && echo yes || echo no)"
+            sleep 60
+          done
+      - name: load - N sandboxes through the relay
+        if: inputs.mode == 'load'
+        env: {N: "${{ inputs.n }}", HOLD: "${{ inputs.hold_min }}", STORM: "${{ inputs.storm_at }}"}
+        run: LT_SERVER_ENV=se/server.env CT=docker bash lab/load-test.sh "$N" lr "$HOLD" "$STORM"
+      - name: logs
+        if: always()
+        run: |
+          mkdir -p ev; cp -f join.log preinstall.log ev/ 2>/dev/null || true
+          sudo cp /var/log/venv-salt-minion.log ev/ 2>/dev/null || sudo sh -c 'cp /var/log/salt/minion '"$PWD"'/ev/minion.log' 2>/dev/null || true
+          sudo cp /run/osas26-relay/events.log ev/relay-events.log 2>/dev/null || true; sudo chmod -R a+r ev
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: "sandbox-${{ inputs.mode }}-evidence", path: ev, retention-days: 14, if-no-files-found: ignore}

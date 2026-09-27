@@ -7,7 +7,8 @@
 set -euo pipefail
 . "$(dirname "$(readlink -f "$0")")/lib.sh"
 lab_env; cd "$W"
-nft list table inet osas26_guard >/dev/null 2>&1 || die "the host guard is not loaded: run 00-os-prep.sh first (RKE2 never starts without it)"
+RUNNER=${RUNNER:-0}   # lab.env: 1 on a GitHub runner (no guard: 00-os-prep.sh step 7)
+[ "$RUNNER" = 1 ] || nft list table inet osas26_guard >/dev/null 2>&1 || die "the host guard is not loaded: run 00-os-prep.sh first (RKE2 never starts without it)"
 t rke2_start
 V=v1.36.4+rke2r1; U="https://github.com/rancher/rke2/releases/download/${V/+/%2B}"
 IMG=/var/lib/rancher/rke2/agent/images
@@ -40,7 +41,7 @@ else
   INSTALL_RKE2_METHOD=tar INSTALL_RKE2_VERSION=$V sh "$LAB/vendor/get-rke2-io.sh"   # installs to /usr/local [R4]
 fi
 systemctl daemon-reload
-systemctl show rke2-server -p Requires --value | grep -qw osas26-guard.service || die "rke2-server does not Require osas26-guard.service"
+[ "$RUNNER" = 1 ] || systemctl show rke2-server -p Requires --value | grep -qw osas26-guard.service || die "rke2-server does not Require osas26-guard.service"
 t rke2_installed
 systemctl enable --now rke2-server                               # blocks until the server is up (image import + pre-pull)
 for b in kubectl crictl ctr; do ln -sf "/var/lib/rancher/rke2/bin/$b" "/usr/local/bin/$b"; done
