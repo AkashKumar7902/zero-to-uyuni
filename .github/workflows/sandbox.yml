@@ -35,7 +35,9 @@ jobs:
         env: {GH_TOKEN: "${{ github.token }}", HQ_RUN: "${{ inputs.hq_run }}"}
         run: |
           mkdir -p se
-          if [ -n "$HQ_RUN" ]; then gh run download "$HQ_RUN" -R "${{ github.repository }}" -n server-env -D se
+          if [ -n "$HQ_RUN" ]; then      # the HQ run may still be building: wait up to 40 min for its server-env artifact
+            for _ in $(seq 80); do gh run download "$HQ_RUN" -R "${{ github.repository }}" -n server-env -D se 2>/dev/null && break; sleep 30; done
+            [ -s se/server.env ] || { echo "::error::no server-env artifact from run $HQ_RUN"; exit 1; }
           else cp attendee/server.env se/server.env; fi
           bash lab/lint-server-env.sh se/server.env; grep -v '^#' se/server.env
           echo "RELAY_HOST=$(sed -n 's/^RELAY=//p' se/server.env)" >> "$GITHUB_ENV"
