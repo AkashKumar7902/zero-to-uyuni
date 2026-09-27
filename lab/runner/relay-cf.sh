@@ -14,7 +14,9 @@
 #   relay-cf.sh status             names, edge locations, name changes, the last end-to-end probe of each door
 #   relay-cf.sh down [door]
 #   relay-cf.sh run DOOR           (systemd) one quick tunnel; records its name; a new name is logged as NAME CHANGED
-#   relay-cf.sh watch              (systemd) end-to-end probes every 30 s through local `cloudflared access` forwarders
+#   relay-cf.sh watch              (systemd) end-to-end probes every 30 s through local `cloudflared access` forwarders;
+#                                  v7: a door dead for 5 min is restarted (a new name; doors.sh republishes it)
+# v7: the presenter's SSH door (cf-ssh) runs on EVERY relay (hq.yml ssh_cf=on); cf-pub/cf-req stay test tooling.
 # THE ONLY DOORS (an allow-list: a web port can never be tunnelled):
 #   cf-pub  -> <node IP>:4505 (Traefik's hostPort -> Salt publish)    cf-req -> <node IP>:4506 (Salt request/auth)
 #   cf-ssh  -> 127.0.0.1:22   (sshd, key-only; client: ssh -o ProxyCommand='cloudflared access ssh --hostname %h')
@@ -74,18 +76,26 @@ print(f"{(time.monotonic() - t) * 1000:.0f}")
 PY
 }
 
-watch(){   # one local `cloudflared access tcp` forwarder per door, re-pointed when a name changes; probe every 30 s
-  declare -A fwd=() at=()
+watch(){   # one local `cloudflared access tcp` forwarder per door, re-pointed when a name changes; probe every 30 s.
+  # v7: a door that fails end to end for CF_RESTART_FAILS probes in a row (default 10 = 5 min: cloudflared's own edge
+  # reconnects take seconds) is restarted: a NEW name, which run() records, cf.env carries and doors.sh publishes
+  declare -A fwd=() at=() nf=()
   while :; do
     for name in cf-pub cf-req cf-ssh; do
       [ -s "$RUN/$name.host" ] || continue
       read -r _ lp kind <<<"$(door "$name")"; h=$(cat "$RUN/$name.host")
       if [ "${at[$name]:-}" != "$h" ] || ! kill -0 "${fwd[$name]:-0}" 2>/dev/null; then
         [ -n "${fwd[$name]:-}" ] && kill "${fwd[$name]}" 2>/dev/null
-        cloudflared access tcp --hostname "$h" --url "127.0.0.1:$lp" >/dev/null 2>&1 & fwd[$name]=$!; at[$name]=$h; sleep 2
+        cloudflared access tcp --hostname "$h" --url "127.0.0.1:$lp" >/dev/null 2>&1 & fwd[$name]=$!; at[$name]=$h; nf[$name]=0; sleep 2
       fi
-      if ms=$(probe_raw "$lp" "$kind"); then printf 'ok %s ms at %s\n' "$ms" "$(date -u +%T)" > "$RUN/$name.probe"
-      else printf 'FAIL at %s\n' "$(date -u +%T)" > "$RUN/$name.probe"; fi
+      if ms=$(probe_raw "$lp" "$kind"); then printf 'ok %s ms at %s\n' "$ms" "$(date -u +%T)" > "$RUN/$name.probe"; nf[$name]=0
+      else
+        nf[$name]=$(( ${nf[$name]:-0} + 1 )); printf 'FAIL x%s at %s\n' "${nf[$name]}" "$(date -u +%T)" > "$RUN/$name.probe"
+        if [ "${nf[$name]}" -ge "${CF_RESTART_FAILS:-10}" ]; then
+          ev "$name: ${nf[$name]} probes failed end to end: restarting its quick tunnel (a NEW name follows)"
+          systemctl restart "osas26-cf@$name.service"; nf[$name]=0; sleep 5
+        fi
+      fi
     done
     sleep "${WATCH_EVERY:-30}"
   done

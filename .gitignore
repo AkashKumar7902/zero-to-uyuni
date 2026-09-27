@@ -11,3 +11,4 @@ credits-extra.txt
 counts-*.txt
 hq.html
 .DS_Store
+__pycache__/

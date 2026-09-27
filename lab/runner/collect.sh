@@ -5,10 +5,15 @@
 set -uo pipefail
 OUT=${1:?outdir}; W=/root/osas26; install -d "$OUT"
 for f in build.log build-phases.tsv timings.tsv check.txt lab.env relay.env cf.env server.env rke2-version.txt \
-         case1-noclass.txt case1-nopod.txt game-post.log accept-*.log e2e-*.log; do
+         case1-noclass.txt case1-nopod.txt game-post.log accept-*.log e2e-*.log leaps.log leaps.state leaps.state.b \
+         hq-table.log; do
   for g in $W/$f; do [ -f "$g" ] && cp "$g" "$OUT/"; done
 done
 [ -d $W/runner ] && cp -r $W/runner "$OUT/runner"
+# v7: the doors as the Mac saw them, and the publisher's log (artifact names and states only)
+bash "$(dirname "$(readlink -f "$0")")/doors.sh" env > "$OUT/doors.env" 2>/dev/null
+cp /tmp/osas26-doors-publish.log "$OUT/runner/" 2>/dev/null
+command -v podman >/dev/null && podman ps -a --format '{{.Names}} {{.Image}} {{.Status}}' > "$OUT/runner/leaps-ps.txt" 2>/dev/null
 [ -d /run/osas26-relay ] && { mkdir -p "$OUT/relay"; cp /run/osas26-relay/*.log /run/osas26-relay/*.port /run/osas26-relay/*.probe "$OUT/relay/" 2>/dev/null; }
 [ -d /run/osas26-cf ] && { mkdir -p "$OUT/relay-cf"; cp /run/osas26-cf/*.log* /run/osas26-cf/*.host /run/osas26-cf/*.probe "$OUT/relay-cf/" 2>/dev/null; }
 mkdir -p "$OUT/relay"; journalctl -u 'osas26-relay*' -u 'osas26-cf*' --no-pager -o short-iso > "$OUT/relay/journal.txt" 2>/dev/null || true

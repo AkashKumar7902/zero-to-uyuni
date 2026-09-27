@@ -1,87 +1,150 @@
-# RUNNER-HQ (lab/runner/): HQ built from zero on a GitHub-hosted runner by lab/build.sh, with its Salt doors (4505,
-# 4506) and SSH on public relays that need no account: bore.pub (raw TCP; at most ~12-25 minions, RUNNER-HQ-REPORT.md
-# §5) or Cloudflare quick tunnels (relay=cloudflare-quick: each sandbox runs lab/loadtest/cf-doors.sh, kit change
-# D-K3). No web port is ever relayed: the Web UI is an SSH tunnel. Start it from the GitHub app (Actions > hq > Run
-# workflow) or from a terminal:
-#   gh workflow run hq.yml -R AkashKumar7902/zero-to-uyuni -f hours=5 -f relay=cloudflare-quick -f game=off
-# The doors are printed in the live log of the "relay" steps (the GitHub app shows it while the job runs) and saved as
-# the artifact "doors" (relay.env) at once; server.env (artifact "server-env") when the build is done (~20-40 min):
-#   gh run download <run id> -R AkashKumar7902/zero-to-uyuni -n doors     (works while the job is running)
-# Stop early (the logs are still uploaded): ssh -p <SSH_PORT> root@bore.pub touch /root/osas26/runner/STOP
-# Secrets (all optional): GEEKO_HQ_DEPLOY_KEY (read-only deploy key of geeko-hq, for the golden hooks) and
-# GOLDEN_TOKEN (game=on only). Nothing secret is ever echoed; the artifacts are checked for secret values.
+# RUNNER-HQ v7 (lab/runner/, docs/runner-hq.md): the stage's real Uyuni HQ, built from zero by lab/build.sh on a
+# GitHub-hosted runner (a public repo's: 4 vCPU / 16 GB), with outbound doors only:
+#   - the presenter's SSH door: a Cloudflare quick tunnel (cloudflared, sha256-pinned; key-only, the osas26 key), and a
+#     second one on bore.pub (bore, sha256-pinned). No web port is ever relayed: the Web UI is an SSH tunnel;
+#   - the HQ TABLE's Salt doors: bore.pub:4505/4506, CAP 8 (the speaker's sandbox + up to 7 crews, join.sh --hq; the
+#     room runs its own HQ, MODE=solo);
+#   - leap-a (registered) and leap-b (clean, bootstrapped live on the Mac's `door.sh leapb`) as Leap 16.0 containers.
+# WHEN: by itself on Sat 3 Oct 2026 at 12:37 WIB (the schedule below); by hand from the GitHub app (Actions > hq > Run
+# workflow; the defaults ARE the show) or `gh workflow run hq.yml -R AkashKumar7902/zero-to-uyuni` (rehearsals: -f hours=3).
+# ONE HQ: `concurrency: hq` + the gate job (lab/runner/gate.sh). A second start while an HQ runs waits in the queue and,
+# when it finally starts, exits in seconds without building; a start after the old run ended builds a fresh HQ.
+# The Mac: ~/osas26-kit/door/door.sh status|ssh|ui|leapb|stop (mac/door.sh) reads the newest "doors*" artifact, which
+# lab/runner/doors-publish.py re-uploads whenever a door changes. Stop early: door.sh stop hq (the logs still upload).
+# THIS REPO IS PUBLIC: its logs and artifacts are public. Nothing secret is printed or uploaded (collect.sh drops any
+# file holding a secret value); the default token stays read-only except in the publish job (contents: write, only to
+# commit attendee/server.env). workflow_dispatch and the one schedule only: never pull_request_target.
 name: hq
 on:
+  schedule:
+    - cron: "37 5 3 10 *"     # 05:37 UTC = 12:37 WIB, Sat 3 Oct (gate.sh: 2026 only, and only if it starts by 13:15 WIB)
   workflow_dispatch:
     inputs:
-      hours: {description: "hours HQ stays up after the build (0.25-5.5; the job itself ends at 6 h)", default: "5", required: true}
+      hours: {description: "hours HQ stays up after the build (0.25-5.5; a job ends at 6 h). Show 5.5; rehearsal 3", default: "5.5", required: true}
       relay:
-        description: "Salt relay: bore.pub = exactly 4505/4506, the kit as it is, <= ~12-25 minions; bore.pub-any = any free ports (needs the D-K2 kit); cloudflare-quick = no connection cap (needs the D-K3 kit: cf-doors.sh)"
+        description: "Salt doors for the HQ table: bore.pub = exactly 4505/4506 (the kit as it is); the others are runner tests"
         type: choice
         options: [bore.pub, bore.pub-any, cloudflare-quick]
         default: bore.pub
       game:
-        description: "game hooks: off = installed with GAME_OFF=1; on = live posts (needs GOLDEN_TOKEN)"
+        description: "game hooks: on = live posts (room auto: the live room inside the show window, else the console's golden target)"
         type: choice
-        options: ["off", "on"]
-        default: "off"
-      room: {description: "where golden posts: auto (live room; forwards to the console's GOLDEN target outside the show) or reh-MMDD-n", default: auto, required: true}
-      accept_min: {description: "start the attendee accept loop now for N minutes (0 = only the Oct 3 15:55 WIB timer)", default: "0", required: true}
-      cap: {description: "CAP: max accepted attendee keys (also the fleet key's usage limit)", default: "60", required: true}
-      publish: {description: "commit attendee/server.env to main when HQ is up (the file every sandbox fetches)", type: boolean, default: false}
+        options: ["on", "off"]
+        default: "on"
+      room: {description: "auto (the show; rehearsals target a reh- room on the console) or reh-MMDD-n directly", default: auto, required: true}
+      accept_min: {description: "run an accept loop now for N minutes (0 = only the Oct 3 15:55 WIB timer)", default: "0", required: true}
+      cap: {description: "CAP: the HQ table (accepted attendee keys; also the fleet key's usage limit)", default: "8", required: true}
+      publish:
+        description: "commit this HQ's attendee/server.env (MODE=solo) to main for the HQ table's sandboxes"
+        type: choice
+        options: ["on", "off"]
+        default: "on"
+      ssh_cf:
+        description: "the Cloudflare quick-tunnel SSH door (the Mac's first door)"
+        type: choice
+        options: ["on", "off"]
+        default: "on"
+      leaps:
+        description: "leap-a (registered) and leap-b (clean) as Leap 16.0 containers"
+        type: choice
+        options: ["on", "off"]
+        default: "on"
+      drill:
+        description: "arm the game's Oct 3 drill timers (arm; they fire only on Oct 3)"
+        type: choice
+        options: ["arm", "off"]
+        default: "arm"
 permissions:
-  contents: write     # only the optional publish step pushes (attendee/server.env)
+  contents: read
 concurrency: {group: hq, cancel-in-progress: false}
+env:     # the inputs, with the show's values for the schedule (a scheduled run has no inputs)
+  HOURS: ${{ inputs.hours || '5.5' }}
+  RELAY: ${{ inputs.relay || 'bore.pub' }}
+  GAME: ${{ inputs.game || 'on' }}
+  ROOM: ${{ inputs.room || 'auto' }}
+  AMIN: ${{ inputs.accept_min || '0' }}
+  CAP: ${{ inputs.cap || '8' }}
+  PUBLISH: ${{ inputs.publish || 'on' }}
+  SSH_CF: ${{ inputs.ssh_cf || 'on' }}
+  LEAPS: ${{ inputs.leaps || 'on' }}
+  DRILL: ${{ inputs.drill || 'arm' }}
 jobs:
-  hq:
+  gate:
     runs-on: ubuntu-24.04
-    timeout-minutes: 358
+    timeout-minutes: 5
+    permissions: {actions: read}
+    outputs: {go: "${{ steps.g.outputs.go }}"}
+    steps:
+      - uses: actions/checkout@v4
+        with: {sparse-checkout: lab/runner/gate.sh, sparse-checkout-cone-mode: false, persist-credentials: false}
+      - id: g
+        name: one HQ at a time; the Oct 3 schedule only on time
+        env: {GH_TOKEN: "${{ github.token }}"}
+        run: |
+          bash lab/runner/gate.sh | tee -a "$GITHUB_OUTPUT"
+          echo "### hq gate: $(sed -n 's/^why=//p' "$GITHUB_OUTPUT" | tail -1)" >> "$GITHUB_STEP_SUMMARY"
+
+  hq:
+    needs: gate
+    if: needs.gate.outputs.go == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 355
+    permissions: {contents: read}
     env:
       HAS_HOOKS_KEY: ${{ secrets.GEEKO_HQ_DEPLOY_KEY != '' }}
     defaults:
       run: {shell: bash}      # -eo pipefail: "build.sh | tee" must fail when build.sh fails
     steps:
       - name: inputs
-        env: {HOURS: "${{ inputs.hours }}", ROOM: "${{ inputs.room }}", AMIN: "${{ inputs.accept_min }}", CAP: "${{ inputs.cap }}"}
         run: |
           echo "JOB_T0=$(date +%s)" >> "$GITHUB_ENV"
           awk -v h="$HOURS" 'BEGIN{exit !(h+0 >= 0.25 && h+0 <= 5.5)}' || { echo "::error::hours must be 0.25-5.5"; exit 1; }
           [[ $ROOM == auto || $ROOM =~ ^reh-[0-9]{4}-[0-9]+$ ]] || { echo "::error::room must be auto or reh-MMDD-n"; exit 1; }
           [[ $AMIN =~ ^[0-9]+$ && $CAP =~ ^[0-9]+$ && $CAP -ge 1 && $CAP -le 99 ]] || { echo "::error::accept_min and cap are numbers (cap 1-99)"; exit 1; }
+          echo "event ${{ github.event_name }}: hours=$HOURS relay=$RELAY game=$GAME room=$ROOM accept_min=$AMIN cap=$CAP publish=$PUBLISH ssh_cf=$SSH_CF leaps=$LEAPS drill=$DRILL"
       - uses: actions/checkout@v4
+        with: {persist-credentials: false}
       - name: prepare the runner (facts, disk, Docker off, sshd key-only, the osas26 key)
         run: |
           sudo bash lab/runner/prep.sh "$GITHUB_WORKSPACE"
+          echo "${{ github.run_id }}" | sudo tee /root/osas26/runner/run-id >/dev/null
+          sudo bash lab/runner/doors.sh state starting
           sudo systemd-run -q --unit=osas26-sampler /bin/bash /root/zero-to-uyuni/lab/runner/sample.sh 10
-      - name: relay - the SSH door (bore v0.6.0, checksum-pinned)
-        env: {RELAY: "${{ inputs.relay }}"}
+      - name: the SSH doors (Cloudflare quick tunnel first, bore.pub second; key-only)
         run: |
           sudo install -d -m 0755 /etc/osas26
           printf 'RELAY_SERVER=bore.pub\nSALT_FIXED=%s\nSSH_WANT=0\nPORT_HOLD=600\nFALLBACK=0\nNODE_IP=%s\nSALT_RELAY=%s\n' \
             "$([ "$RELAY" = bore.pub ] && echo 1 || echo 0)" "$(ip -o -4 route get 1.1.1.1 | sed -n 's/.* src \([^ ]*\).*/\1/p')" \
-            "$([ "$RELAY" = cloudflare-quick ] && echo cloudflare-quick || echo bore)" | sudo tee /etc/osas26/relay.conf
-          sudo bash /root/zero-to-uyuni/lab/runner/relay.sh install
-          sudo bash /root/zero-to-uyuni/lab/runner/relay.sh up ssh
-          . <(sudo cat /root/osas26/relay.env)
-          { echo "### RUNNER-HQ: the SSH door (key-only, the osas26 key)"
-            echo '```'
-            echo "ssh -i ~/.ssh/osas26_ed25519 -p $SSH_PORT root@$RELAY_SERVER      # host key $SSH_HOSTKEY"
-            echo '```'; } >> "$GITHUB_STEP_SUMMARY"
-          if [ "$RELAY" = cloudflare-quick ]; then     # a second SSH door, independent of bore.pub
-            sudo bash /root/zero-to-uyuni/lab/runner/relay-cf.sh install && sudo bash /root/zero-to-uyuni/lab/runner/relay-cf.sh up ssh || echo "::warning::the Cloudflare SSH door is not up"
-            h=$(sudo sed -n 's/^CF_SSH_HOST=//p' /root/osas26/cf.env)
-            echo "second SSH door: ssh -o ProxyCommand='cloudflared access ssh --hostname %h' root@$h" | tee -a "$GITHUB_STEP_SUMMARY"
+            "$([ "$RELAY" = cloudflare-quick ] && echo cloudflare-quick || echo bore)" | sudo tee /etc/osas26/relay.conf >/dev/null
+          if [ "$SSH_CF" = on ]; then
+            sudo bash /root/zero-to-uyuni/lab/runner/relay-cf.sh install && sudo bash /root/zero-to-uyuni/lab/runner/relay-cf.sh up ssh \
+              || echo "::warning::the Cloudflare SSH door is not up yet (its watchdog keeps trying; the bore.pub door is the second)"
           fi
-      - name: publish the doors as an artifact now (readable while the job runs; the job summary appears only at the end)
-        run: mkdir -p doors && sudo cat /root/osas26/relay.env > doors/relay.env && { sudo cat /root/osas26/cf.env 2>/dev/null || true; } > doors/cf.env
+          sudo bash /root/zero-to-uyuni/lab/runner/relay.sh install
+          sudo bash /root/zero-to-uyuni/lab/runner/relay.sh up ssh || echo "::warning::the bore.pub SSH door is not up yet"
+          sudo bash lab/runner/doors.sh summary | tee -a "$GITHUB_STEP_SUMMARY"
+          mkdir -p doors && sudo bash lab/runner/doors.sh env > doors/doors.env
       - uses: actions/upload-artifact@v4
-        with: {name: doors, path: doors, retention-days: 3, overwrite: true}
+        with: {name: doors, path: doors, retention-days: 3}
+      - name: the doors publisher (a new "doors-N" artifact whenever a door or HQ's state changes)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // only an action's process gets the artifact credentials; the publisher keeps running after this step
+            const { spawn } = require('child_process');
+            const p = spawn('python3', [`${process.env.GITHUB_WORKSPACE}/lab/runner/doors-publish.py`],
+                            { detached: true, stdio: 'ignore', env: process.env });
+            p.unref();
+            core.info(`doors publisher started (pid ${p.pid}); log /tmp/osas26-doors-publish.log`);
+      - name: leap-a and leap-b (Leap 16.0 containers; prepared in the background during the build)
+        if: env.LEAPS == 'on'
+        run: sudo systemd-run -q --unit=osas26-leaps-prep /bin/bash /root/zero-to-uyuni/lab/runner/leaps.sh prep
       - name: build HQ from zero (lab/build.sh, RUNNER=1)
         timeout-minutes: 150
-        env: {CAP: "${{ inputs.cap }}"}
-        run: sudo env RUNNER=1 KEY_LIMIT="$CAP" bash /root/zero-to-uyuni/lab/build.sh 2>&1 | sudo tee /root/osas26/build.log
-      - name: relay - the Salt doors (4505, 4506) and server.env
-        env: {RELAY: "${{ inputs.relay }}"}
+        run: |
+          sudo bash lab/runner/doors.sh state building
+          sudo env RUNNER=1 KEY_LIMIT="$CAP" bash /root/zero-to-uyuni/lab/build.sh 2>&1 | sudo tee /root/osas26/build.log
+      - name: the HQ table's Salt doors (4505, 4506), CAP, and server.env
         run: |
           if [ "$RELAY" = cloudflare-quick ]; then
             sudo bash /root/zero-to-uyuni/lab/runner/relay-cf.sh up salt || echo "::warning::Cloudflare Salt doors not up (see relay-cf status)"
@@ -90,20 +153,15 @@ jobs:
             sudo bash /root/zero-to-uyuni/lab/runner/relay.sh up salt || echo "::warning::Salt doors not as wanted (see relay status)"
           fi
           sudo bash /root/zero-to-uyuni/lab/runner/relay.sh status
+          sudo bash /root/zero-to-uyuni/lab/runner/hq-table.sh setup "$CAP"
           mkdir -p out && sudo bash /root/zero-to-uyuni/lab/runner/server-env.sh > out/server.env || echo "::error::server.env not written"
           sudo bash /root/zero-to-uyuni/lab/runner/e2e.sh pubport || true
-          . <(sudo cat /root/osas26/relay.env)
-          { echo "### RUNNER-HQ: HQ is up"
-            if [ "$RELAY" = cloudflare-quick ]; then echo "Salt doors: Cloudflare quick tunnels (server.env CF_PUB_HOST, CF_REQ_HOST); each sandbox runs cf-doors.sh"
-            else echo "Salt doors: \`$RELAY_SERVER:$SALT_PUB_PORT\` (publish), \`$RELAY_SERVER:$SALT_REQ_PORT\` (request), relay IPv4 $RELAY_IP"; fi
-            echo "SSH: \`ssh -i ~/.ssh/osas26_ed25519 -p $SSH_PORT root@$RELAY_SERVER\` (host key $SSH_HOSTKEY)"
-            echo "Web UI: \`ssh -i ~/.ssh/osas26_ed25519 -p $SSH_PORT -N -L 127.0.0.1:18443:$NODE_IP:443 root@$RELAY_SERVER\`, then https://$(sudo sed -n 's/^FQDN=//p' /root/osas26/lab.env):18443/ with the name mapped to 127.0.0.1"
+          sudo bash lab/runner/doors.sh state up
+          { echo "### RUNNER-HQ: HQ is up ($(( ($(date +%s) - JOB_T0) / 60 )) min after the job started)"
+            echo "Web UI: \`door.sh ui\` on the Mac (an SSH tunnel to 127.0.0.1:18443; no web port is relayed)"
             echo; echo "server.env (the artifact **server-env**):"; echo '```'; cat out/server.env; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with: {name: server-env, path: out/server.env, retention-days: 3}
-      - run: sudo cat /root/osas26/relay.env > doors/relay.env && { sudo cat /root/osas26/cf.env 2>/dev/null || true; } > doors/cf.env
-      - uses: actions/upload-artifact@v4
-        with: {name: doors, path: doors, retention-days: 3, overwrite: true}
       - name: geeko-hq's golden hooks (sparse checkout)
         if: env.HAS_HOOKS_KEY == 'true'
         uses: actions/checkout@v4
@@ -118,46 +176,86 @@ jobs:
       - uses: actions/setup-node@v4
         if: env.HAS_HOOKS_KEY == 'true'
         with: {node-version: "22"}
-      - name: install the hooks (GAME_OFF=1 unless game=on)
+      - name: install the hooks (live posts with game=on; the Oct 3 drill timers with drill=arm)
         if: env.HAS_HOOKS_KEY == 'true'
-        env: {GAME: "${{ inputs.game }}", ROOM: "${{ inputs.room }}", GOLDEN_TOKEN: "${{ secrets.GOLDEN_TOKEN }}"}
+        env: {GOLDEN_TOKEN: "${{ secrets.GOLDEN_TOKEN }}"}
         run: |
           node geeko-hq/golden-hooks/make-deny-env.mjs > geeko-hq/golden-hooks/deny.env
           sudo --preserve-env=GOLDEN_TOKEN bash lab/runner/hooks.sh "$GITHUB_WORKSPACE/geeko-hq/golden-hooks" "$GAME" "$ROOM"
           rm -rf geeko-hq
+          if [ "$DRILL" = arm ]; then   # = d-drill-arm: absolute Oct 3 times, so on any other day they never fire
+            sudo systemctl enable --now osas26-drill-roster.timer osas26-drill-check1.timer osas26-drill-check2.timer osas26-drill-check3.timer osas26-drill-evidence.timer
+            systemctl list-timers --all --no-pager | grep -E 'osas26-(accept|drill)' || true
+          fi
       - name: no hooks key
         if: env.HAS_HOOKS_KEY != 'true'
         run: echo "::notice::GEEKO_HQ_DEPLOY_KEY is not set, so the golden hooks are not installed (the lab works without the game)"
+      - name: leap-a registered, leap-b clean
+        if: env.LEAPS == 'on'
+        run: |
+          for _ in $(seq 120); do sudo grep -qE '^(prepared|FAILED)' /root/osas26/leaps.state 2>/dev/null && break; sleep 5; done
+          sudo cat /root/osas26/leaps.state || true
+          sudo bash /root/zero-to-uyuni/lab/runner/leaps.sh register-a || echo "::warning::leap-a is not registered (leaps.sh status; the twins S8a-S8c are the fallback)"
+          sudo bash /root/zero-to-uyuni/lab/runner/leaps.sh status || true
       - name: accept loop now (optional)
-        if: inputs.accept_min != '0'
-        env: {AMIN: "${{ inputs.accept_min }}", CAP: "${{ inputs.cap }}"}
+        if: env.AMIN != '0'
         run: sudo bash /root/zero-to-uyuni/lab/runner/e2e.sh accept "$AMIN" "$CAP"
-      - name: publish attendee/server.env (optional)
-        if: inputs.publish
-        run: |
-          git config user.name "zero-to-uyuni hq.yml"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch -q origin main && git checkout -q -B main origin/main
-          cp out/server.env attendee/server.env && cp out/server.env zero-to-uyuni/assets/server.env
-          bash lab/lint-server-env.sh attendee/server.env
-          git add attendee/server.env zero-to-uyuni/assets/server.env
-          git commit -q -m "server.env: RUNNER-HQ run ${{ github.run_id }} (relay $(sed -n 's/^RELAY=//p' out/server.env))" && git push -q origin main
-          echo "published: https://raw.githubusercontent.com/${{ github.repository }}/main/attendee/server.env" >> "$GITHUB_STEP_SUMMARY"
       - name: check.sh
-        run: sudo bash /root/zero-to-uyuni/lab/check.sh 2>&1 | sudo tee /root/osas26/check.txt || true
-      - name: keep HQ up (heartbeat every minute)
-        env: {HOURS: "${{ inputs.hours }}"}
         run: |
-          left=$(( 350 - ($(date +%s) - JOB_T0) / 60 - 6 ))
+          sudo bash /root/zero-to-uyuni/lab/check.sh 2>&1 | sudo tee /root/osas26/check.txt || true
+          sudo bash lab/runner/doors.sh summary >> "$GITHUB_STEP_SUMMARY"
+      - name: keep HQ up (heartbeat every minute; `door.sh stop hq` ends it)
+        run: |
+          left=$(( 355 - 10 - ($(date +%s) - JOB_T0) / 60 ))
           want=$(awk -v h="$HOURS" 'BEGIN{printf "%d", h * 60}')
           min=$(( want < left ? want : left )); [ "$min" -gt 0 ] || min=1
           [ "$min" -lt "$want" ] && echo "::warning::capped at $min min by the 6-h job limit"
           sudo bash /root/zero-to-uyuni/lab/runner/heartbeat.sh "$min"
-      - name: hold for debugging after a failure (SSH stays open; STOP file ends it)
+      - name: hold for debugging after a failure (SSH stays open; the STOP file ends it)
         if: failure()
-        run: sudo bash /root/zero-to-uyuni/lab/runner/heartbeat.sh 45 || true
+        run: |
+          sudo bash lab/runner/doors.sh state failed || true
+          sudo bash /root/zero-to-uyuni/lab/runner/heartbeat.sh 45 || true
       - name: collect logs and timings (no secrets)
         if: always()
-        run: sudo bash lab/runner/collect.sh "$GITHUB_WORKSPACE/evidence" || true
+        run: |
+          sudo bash lab/runner/doors.sh state stopping || true
+          sleep 20   # the publisher's last "doors-N" (state stopping)
+          { echo "### RUNNER-HQ: the doors this run published"; echo '```'; cat /tmp/osas26-doors-publish.log 2>/dev/null || echo "(no publisher log)"
+            sudo grep -h 'cf-ssh: \(UP\|NAME CHANGED\)\|restarting' /run/osas26-cf/events.log 2>/dev/null || true; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          sudo bash lab/runner/collect.sh "$GITHUB_WORKSPACE/evidence" || true
       - uses: actions/upload-artifact@v4
         if: always()
         with: {name: hq-evidence, path: evidence, retention-days: 14, if-no-files-found: warn}
+
+  publish:     # the only job with a write token: it never talks to HQ or to any sandbox
+    needs: gate
+    if: needs.gate.outputs.go == 'true' && (inputs.publish || 'on') == 'on'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions: {contents: write, actions: read}
+    defaults:
+      run: {shell: bash}
+    steps:
+      - uses: actions/checkout@v4
+      - name: wait for this HQ's server.env (the artifact server-env), then commit it to main
+        env: {GH_TOKEN: "${{ github.token }}", RUN: "${{ github.run_id }}", REPO: "${{ github.repository }}"}
+        run: |
+          for _ in $(seq 170); do
+            gh api "repos/$REPO/actions/runs/$RUN/artifacts" --jq '.artifacts[].name' 2>/dev/null | grep -qx server-env && break
+            st=$(gh api "repos/$REPO/actions/runs/$RUN/jobs" --jq '.jobs[] | select(.name == "hq") | .status' 2>/dev/null)
+            [ "$st" = completed ] && { echo "::notice::the hq job ended without a server.env: nothing to publish"; exit 0; }
+            sleep 20
+          done
+          mkdir -p se && gh run download "$RUN" -R "$REPO" -n server-env -D se || { echo "::warning::no server-env artifact after 56 min"; exit 0; }
+          STRICT=1 bash lab/lint-server-env.sh se/server.env
+          git config user.name "zero-to-uyuni hq.yml"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for try in 1 2 3; do
+            git fetch -q origin main && git checkout -q -B main origin/main
+            cp se/server.env attendee/server.env && cp se/server.env zero-to-uyuni/assets/server.env
+            git add attendee/server.env zero-to-uyuni/assets/server.env
+            git diff --cached --quiet && { echo "server.env unchanged"; break; }
+            git commit -q -m "server.env: RUNNER-HQ run $RUN (relay $(sed -n 's/^RELAY=//p' se/server.env), MODE=$(sed -n 's/^MODE=//p' se/server.env))" \
+              && git push -q origin main && { echo "published: https://raw.githubusercontent.com/$REPO/main/attendee/server.env" | tee -a "$GITHUB_STEP_SUMMARY"; break; }
+            sleep 5
+          done
