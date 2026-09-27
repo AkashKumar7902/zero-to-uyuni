@@ -53,8 +53,8 @@ commit.
 `doors-N` whenever it changes (a new tunnel name, a moved port, HQ's state). `mac/door.sh` takes the newest one.
 
 Why an artifact:
-- The job summary is written only when a step ends, and the keep-alive step lasts hours, so a renamed door would not
-  show there until the end.
+- The job summary is written only when a step ends, and the keep-alive step lasts hours, so a door's new name would
+  not show there until the end.
 - An artifact can be read while the run is still going, by any logged-in GitHub user, with `gh`. The Mac needs no
   new secret.
 - The upload needs no write token on HQ. The job's runtime token only reaches this run's artifacts, and it is handed

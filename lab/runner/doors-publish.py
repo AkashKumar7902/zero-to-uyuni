@@ -8,8 +8,8 @@ port fell back, HQ's state moved on, leap-a/leap-b got ready), uploads it as a N
 mac/door.sh takes the newest `doors*` artifact of the newest hq run (`gh api .../artifacts`), while the job still runs.
 
 Why this channel (the brief asked for one the Mac can read without a secret of HQ's):
-  - the job summary is written only when a step ends, and the keep-alive step lasts hours: a renamed door would stay
-    invisible there until the end;
+  - the job summary is written only when a step ends, and the keep-alive step lasts hours: a door's new name would
+    stay invisible there until the end;
   - an artifact is readable while the run is in progress, by any logged-in GitHub user (`gh` on the Mac: no new
     secret), and this upload needs no write token on HQ: the runtime token is scoped to this run's artifacts;
   - committing to a branch would need `contents: write` on the runner that outside machines talk to; it stays read-only.
