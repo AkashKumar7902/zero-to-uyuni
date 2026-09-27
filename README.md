@@ -49,8 +49,10 @@ Frozen sandbox? Wait 1 minute, then call a helper. Don't reload on your own.
 ## Three ways to run Uyuni
 
 1. **As a client, in a sandbox** (the workshop): the Killercoda scenario in [`zero-to-uyuni/`](zero-to-uyuni/). Your
-   sandbox renders HQ's real Helm chart, joins the fleet with [`attendee/join.sh`](attendee/join.sh), takes orders and
-   survives an incident drill.
+   sandbox renders HQ's real Helm chart, then becomes a Salt minion with [`attendee/join.sh`](attendee/join.sh), takes
+   orders and survives an incident drill. In the room every sandbox also runs **its own HQ**: a real Salt master beside
+   the minion ([`attendee/solo.sh`](attendee/solo.sh), 127.0.0.1 only), so you accept your own key and send the orders
+   yourself. `join.sh --hq` joins the real Uyuni HQ instead (the HQ table).
 2. **A single VM with Podman** (the easiest real server): `mgradm` on openSUSE Tumbleweed or Leap Micro, see the
    [Uyuni Installation Guide](https://www.uyuni-project.org/uyuni-docs/en/uyuni/installation-and-upgrade/install-server.html).
 3. **This lab: RKE2 + Helm** (what HQ runs): [`lab/`](lab/), below. It follows the
@@ -133,7 +135,7 @@ lab/vendor/     get-rke2-io.sh SHA256SUMS
 lab/states/     welcome.sls (the crew card)
 lab/loadtest/   Containerfile (one synthetic sandbox)
 clients/        leap16-minion.sh reset-leap-b.sh (the Leap 16 demo clients)
-attendee/       the sandbox kit: preinstall.sh join.sh catchup.sh break.sh fix.sh claim.sh hq-say.sh achieve.sh
+attendee/       the sandbox kit: preinstall.sh join.sh solo.sh catchup.sh break.sh fix.sh claim.sh hq-say.sh achieve.sh
                 crew.sh game.sh probe.sh quest.sh server.env uyuni.yaml.prerendered manual.adoc.saved
 zero-to-uyuni/  the Killercoda scenario (at the repo root, so it stays a scenario): index.json intro.md wait.sh
                 lab1..4.md verify1..4.sh finish.md preinstall.sh assets/ (copies of attendee/*: `make killercoda`)
@@ -141,6 +143,8 @@ docs/           troubleshooting.md timings.md cases.md runner-hq.md
 ```
 
 `attendee/server.env` says where HQ lives; `join.sh` fetches it from `main` at run time, so moving HQ is one push.
+Its `MODE=solo` keeps every sandbox on its own HQ whatever the address says (`MODE=hq`: always the real HQ; empty:
+the real HQ when it answers on 4506 within 6 s). `lab/lint-server-env.sh` checks a copy (`STRICT=1` for the day's).
 
 ## Multi-arch notes
 

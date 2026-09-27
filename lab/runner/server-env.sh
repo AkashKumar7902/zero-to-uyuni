@@ -4,6 +4,8 @@
 #   FQDN=uyuni.<runner's own address>.sslip.io   HQ's name (Uyuni's certificate and config use it; pods resolve it)
 #   SERVER_IP=<the relay's IPv4>                 join.sh writes "SERVER_IP FQDN" into the sandbox's /etc/hosts
 #   RELAY=<relay host>                           marks the relay mode for lab/lint-server-env.sh
+#   MODE=solo                                    v7: every sandbox runs its own HQ; only join.sh --hq (the HQ table)
+#                                                uses this HQ. MODE_FOR_ENV=hq|auto writes another mode (auto = empty)
 # The Salt ports are not written: the relay serves exactly 4505/4506 (relay.sh, SALT_FIXED=1), which the kit expects.
 # SALT_RELAY=cloudflare-quick (relay.conf; relay-cf.sh): SERVER_IP=127.0.0.1, because every sandbox reaches HQ through
 # its own local forwarders on 127.0.0.1:4505/4506 (cf-doors.sh, kit change D-K3), and CF_PUB_HOST/CF_REQ_HOST name
@@ -30,6 +32,8 @@ else
 fi
 fp=$(kubectl -n uyuni exec deploy/uyuni -c uyuni -- salt-key -F master 2>/dev/null | sed -n 's/^master\.pub: *//p' | tr -d '\r')
 [ -n "$fp" ] || die "could not read HQ's master.pub fingerprint"
+mode=${MODE_FOR_ENV-solo}; [ "$mode" = auto ] && mode=""
+case "$mode" in ""|solo|hq) ;; *) die "MODE_FOR_ENV '$mode' is not solo, hq or auto" ;; esac
 umask 022
 cat > "$OUT" <<EOF
 # server.env - where HQ and the game live. Public, no secrets. Written by lab/runner/server-env.sh on a GitHub runner
@@ -41,7 +45,8 @@ KEY=1-osas26-fleet
 GAME_URL=${GAME_URL_FOR_ENV-https://geeko-hq.pages.dev}
 HQ_MASTER_FINGER_TAIL=${fp: -5}
 HQ_MASTER_FINGER=${fp}
+MODE=${mode}
 EOF
 [ -n "$extra" ] && printf '%s\n' "$extra" >> "$OUT"
-STRICT=1 bash "$LAB/lint-server-env.sh" "$OUT" >&2
+WANT_MODE=${mode:-auto} STRICT=1 bash "$LAB/lint-server-env.sh" "$OUT" >&2
 cat "$OUT"

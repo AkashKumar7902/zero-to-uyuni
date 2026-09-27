@@ -11,6 +11,14 @@ gh run download <run id> -R AkashKumar7902/zero-to-uyuni -n server-env   # when 
 ssh -p <SSH_PORT> root@bore.pub touch /root/osas26/runner/STOP           # end early; the logs still upload
 ```
 
+## Who joins this HQ (v7)
+
+Only the stage's machines: leap-a/leap-b (`clients/`) and **the HQ table** (the speaker's sandbox plus up to 7 crews,
+CAP 8), which joins with `join.sh --hq`. Every other sandbox runs **its own HQ** (`attendee/solo.sh`), because `server.env` says `MODE=solo`:
+`lab/runner/server-env.sh` writes it into every copy it makes, and `STRICT=1 lab/lint-server-env.sh` fails without it
+(`MODE_FOR_ENV=hq` or `auto` writes another mode on purpose). bore.pub carries the table with margin; it cannot carry a
+room (below). The test tooling (`sandbox.yml`, `lab/load-test.sh`) joins with `--hq`.
+
 ## The relays
 
 | `relay` | Salt doors | Sandbox side | Measured (27 Sep 2026) |

@@ -2,7 +2,8 @@
 # load-test.sh N PREFIX [HOLD_MIN] [STORM_AT_MIN] - PLAN §5.10 + FREE-GOLDEN G-LT60: N synthetic attendee sandboxes as
 # containers on THIS machine (a GitHub runner via .github/workflows/load-test.yml, or any Linux box with docker or
 # podman; never HQ itself). Each container is a stand-in for the Killercoda "ubuntu" image: attendee/ + preinstall.sh
-# (lab/loadtest/Containerfile), then `join.sh <PREFIX><i>` on the non-systemd branch (its own machine-id).
+# (lab/loadtest/Containerfile), then `join.sh --hq <PREFIX><i>` on the non-systemd branch (its own machine-id; --hq
+# because the room's server.env says MODE=solo, and these containers must join the real HQ).
 # Before: on HQ, `osas26-salt-window open 50` and an accept loop with CAP >= all joins, e.g.
 #   systemd-run --unit=osas26-accept-lt -p RuntimeMaxSec=40min -E CAP=70 /usr/local/sbin/osas26-accept-loop 30
 # STORM_AT_MIN: at that minute every minion is killed, and restarted 90 s later (the Level 4 outage storm).
@@ -39,7 +40,7 @@ t0=$(date +%s)
 for n in "${names[@]}"; do
   nick=${n#osas26-lt-}
   "$CT" run -d --name "$n" --hostname "$n" -e SERVER_ENV_URL="$ENVURL" "${MNT[@]}" "$IMG" \
-    bash -c "${PRE}/root/osas26/join.sh $nick > /root/join.log 2>&1; sleep infinity" >/dev/null
+    bash -c "${PRE}/root/osas26/join.sh --hq $nick > /root/join.log 2>&1; sleep infinity" >/dev/null
   sleep 1
 done
 echo "$(date -u +%T) started $N joins in $(( $(date +%s) - t0 )) s"

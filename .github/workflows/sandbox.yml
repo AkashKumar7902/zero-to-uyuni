@@ -1,5 +1,5 @@
 # A test sandbox on a SECOND GitHub runner (a cloud network, like Killercoda's), joining RUNNER-HQ through its relay.
-#   mode=single  this runner becomes one attendee sandbox: the kit's preinstall.sh + join.sh <nick>, exactly as the
+#   mode=single  this runner becomes one attendee sandbox: the kit's preinstall.sh + join.sh --hq <nick>, exactly as the
 #                Killercoda scenario runs them (systemd, root), then holds; its own SSH door (key-only, the osas26 key)
 #                is in the job summary, so the break/fix drill can be driven from outside
 #   mode=load    lab/load-test.sh: N synthetic sandboxes (containers from lab/loadtest/Containerfile) join, hold, and
@@ -88,7 +88,7 @@ jobs:
           sudo cp zero-to-uyuni/assets/* /root/osas26/ && sudo cp se/server.env /root/osas26/server.env && sudo sh -c 'chmod +x /root/osas26/*.sh'
           t0=$(date +%s); sudo bash /root/osas26/preinstall.sh > preinstall.log 2>&1; echo "preinstall.sh: $(( $(date +%s) - t0 )) s (exit $?)"; tail -3 preinstall.log
           t0=$(date +%s)
-          sudo env SERVER_ENV_URL=file:///root/osas26/server.env bash /root/osas26/join.sh "$NICK" 2>&1 | tee join.log
+          sudo env SERVER_ENV_URL=file:///root/osas26/server.env bash /root/osas26/join.sh --hq "$NICK" 2>&1 | tee join.log   # --hq: server.env says MODE=solo (the room); this runner joins the real HQ
           echo "join.sh: $(( $(date +%s) - t0 )) s"; echo "JOIN_T0=$t0" >> "$GITHUB_ENV"
           sudo cat /etc/osas26-id
       - name: single - hold (minion state every minute)
