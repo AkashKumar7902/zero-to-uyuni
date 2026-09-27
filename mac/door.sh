@@ -80,12 +80,14 @@ EOF
   echo "$HOME/.ssh/config: Host golden (Cloudflare door) and golden-bore (bore.pub door); the old file is $ST/ssh_config.bak"
 }
 
+# the newest doors: the highest N of "doors-N" (the publisher's counter; artifact ids are NOT in upload order: measured
+# 27 Sep, doors-2 got a smaller id than doors-1); "doors" (the first upload, N = 0) when no doors-N exists yet
 latest_run(){   # prints "RUN_ID ARTIFACT" of the newest RUNNING hq run that published doors
   local runs id a
   runs=$(gh run list -R "$REPO" -w hq.yml -L 10 --json databaseId,status 2>/dev/null) || die "gh could not list the hq runs of $REPO"
   for id in $(jq -r '.[] | select(.status == "in_progress") | .databaseId' <<<"$runs"); do
     a=$(gh api "repos/$REPO/actions/runs/$id/artifacts?per_page=100" --jq \
-        '[.artifacts[] | select((.name | test("^doors(-[0-9]+)?$")) and (.expired | not))] | max_by(.id) | .name // empty' 2>/dev/null)
+        '[.artifacts[] | select((.name | test("^doors(-[0-9]+)?$")) and (.expired | not))] | max_by(.name | (capture("-(?<n>[0-9]+)$").n // "0") | tonumber) | .name // empty' 2>/dev/null)
     [ -n "$a" ] && { echo "$id $a"; return 0; }
   done
   return 1
@@ -96,7 +98,7 @@ fetch(){   # fetch [RUN_ID]: the newest doors artifact -> $DE, the host key -> $
   need_gh; mkdir -p "$ST"; chmod 700 "$ST"
   if [ -n "${1:-}" ]; then run=$1
     art=$(gh api "repos/$REPO/actions/runs/$run/artifacts?per_page=100" --jq \
-          '[.artifacts[] | select((.name | test("^doors(-[0-9]+)?$")) and (.expired | not))] | max_by(.id) | .name // empty' 2>/dev/null)
+          '[.artifacts[] | select((.name | test("^doors(-[0-9]+)?$")) and (.expired | not))] | max_by(.name | (capture("-(?<n>[0-9]+)$").n // "0") | tonumber) | .name // empty' 2>/dev/null)
     [ -n "$art" ] || die "run $run has no doors artifact (yet?): it appears ~1 min after the job starts"
   else
     read -r run art < <(latest_run) || {

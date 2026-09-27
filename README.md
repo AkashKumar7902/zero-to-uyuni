@@ -98,7 +98,7 @@ tmux attach -t build                               # detach: Ctrl-b d. The build
 
 The whole build took **15 min 37 s** unattended on a 6 vCPU / 16 GB VM (about half of it downloads).
 `FROM=30 bash lab/build.sh` resumes at a step. Every step appends `phase<TAB>time` to `/root/osas26/timings.tsv`;
-[`docs/timings.md`](docs/timings.md) has measured numbers; [`docs/runner-hq.md`](docs/runner-hq.md) runs HQ on a GitHub runner. When something breaks: [`docs/troubleshooting.md`](docs/troubleshooting.md).
+[`docs/timings.md`](docs/timings.md) has measured numbers; [`docs/runner-hq.md`](docs/runner-hq.md) runs HQ on a GitHub runner (`mac/door.sh` is the presenter's door to it). When something breaks: [`docs/troubleshooting.md`](docs/troubleshooting.md).
 
 **The web UI, through a tunnel** (from your own machine; the admin password is in `/root/osas26/secrets.env`):
 
@@ -134,6 +134,8 @@ lab/manifests/  uyuni-traefik.yaml local-path-storage.yaml storage-smoke.yaml.tm
 lab/vendor/     get-rke2-io.sh SHA256SUMS
 lab/states/     welcome.sls (the crew card)
 lab/loadtest/   Containerfile (one synthetic sandbox)
+lab/runner/     RUNNER-HQ (hq.yml): prep relay relay-cf doors doors-publish leaps hq-table gate server-env hooks heartbeat collect e2e
+mac/            door.sh (the presenter Mac's door to RUNNER-HQ) README.md
 clients/        leap16-minion.sh reset-leap-b.sh (the Leap 16 demo clients)
 attendee/       the sandbox kit: preinstall.sh join.sh solo.sh catchup.sh break.sh fix.sh claim.sh hq-say.sh achieve.sh
                 crew.sh game.sh probe.sh quest.sh server.env uyuni.yaml.prerendered manual.adoc.saved

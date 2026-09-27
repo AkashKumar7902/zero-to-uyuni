@@ -16,7 +16,7 @@ out(){ echo "go=$1"; echo "why=$2"; echo "$2" >&2; exit 0; }
 if [ "$EV" = schedule ]; then
   [ "$(date -u +%F)" = "${SHOW_DATE_UTC:-2026-10-03}" ] || out false "schedule: today is not the show day ($(date -u +%F)): nothing to build"
   lim=$(date -u -d "${SHOW_DATE_UTC:-2026-10-03} ${LATEST_START_UTC:-06:15}" +%s)
-  [ "$now" -le "$lim" ] || out false "schedule: started $(date -u +%H:%M) UTC, after the 06:15 UTC (13:15 WIB) limit: a late cron builds nothing (start by hand if no HQ runs)"
+  [ "$now" -le "$lim" ] || out false "schedule: started $(date -u +%H:%M) UTC, after the ${LATEST_START_UTC:-06:15} UTC limit (13:15 WIB on the day): a late cron builds nothing (start by hand if no HQ runs)"
 fi
 me=$(gh api "repos/$R/actions/runs/$ME" --jq .created_at 2>/dev/null) || out true "the run list could not be read: building (fail-open)"
 runs=$(gh api "repos/$R/actions/workflows/hq.yml/runs?per_page=30" 2>/dev/null) || out true "the run list could not be read: building (fail-open)"

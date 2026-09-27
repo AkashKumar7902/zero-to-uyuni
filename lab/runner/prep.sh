@@ -23,7 +23,10 @@ facts(){
 }
 facts > "$M/facts-before.txt"; cat "$M/facts-before.txt"
 t0=$(date +%s)
-# 1. disk: the big preinstalled toolchains (none is used by HQ; node and python stay)
+# 1. disk: the big preinstalled toolchains (none is used by HQ; node and python stay). v7: a public repo's runner has
+#    ~86 GB free on / already (measured 27 Sep, run 36329160782), so the removal (~2 min 50 s) runs only below 60 GB
+free_g=$(df -BG --output=avail / | tail -1 | tr -dc 0-9)
+if [ "${free_g:-0}" -ge "${PREP_DISK_OK_GB:-60}" ]; then echo "disk: ${free_g} GB free on /: no cleanup needed"; else
 for d in /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL \
          /usr/share/swift /usr/local/share/powershell /usr/local/share/chromium /opt/microsoft /opt/google \
          /usr/lib/google-cloud-sdk /usr/share/miniconda /usr/local/julia* /opt/hostedtoolcache/PyPy \
@@ -31,6 +34,7 @@ for d in /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup /op
   [ -e "$d" ] && rm -rf "$d" &
 done
 wait
+fi
 # 2. Docker: stopped (RKE2 has its own containerd); its images are removed to free disk
 if systemctl is-active --quiet docker.service; then
   docker system prune -af >/dev/null 2>&1 || true

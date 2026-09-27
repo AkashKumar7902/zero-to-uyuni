@@ -38,7 +38,7 @@ prep(){
   cat > "$B/Containerfile" <<EOF
 FROM $BASE
 RUN zypper -n --gpg-auto-import-keys ref >/dev/null && \\
-    zypper -n --gpg-auto-import-keys in --no-recommends systemd systemd-sysvcompat openssh-server openssh-clients \\
+    zypper -n --gpg-auto-import-keys in --no-recommends systemd dbus-broker openssh-server openssh-clients \\
       curl iproute2 hostname gawk tar gzip util-linux ca-certificates >/dev/null && \\
     zypper -n ar -f $CT_REPO uyuni-client-tools && \\
     zypper -n --gpg-auto-import-keys in --no-recommends venv-salt-minion >/dev/null && \\
