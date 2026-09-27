@@ -59,8 +59,9 @@ for tm in osas26-salt-open osas26-accept osas26-salt-close; do
   if systemctl is-enabled --quiet "$tm.timer" 2>/dev/null; then info "timer $tm: next ${nx:-none}"; else info "timer $tm: NOT enabled"; fi
 done
 # --- ssh stays key-only
-sshd -T 2>/dev/null | grep -qx 'passwordauthentication no' && sshd -T 2>/dev/null | grep -qx 'kbdinteractiveauthentication no' \
-  && sshd -T 2>/dev/null | grep -qxE 'permitrootlogin (prohibit-password|without-password)' && ok "sshd key-only ($(sshd -T 2>/dev/null | awk '$1=="port"{print $2}' | tr '\n' ' '))" || bad "sshd is NOT key-only"
+ST=$(sshd -T 2>/dev/null)   # captured: `sshd -T | grep -q` under pipefail fails on SIGPIPE
+grep -qx 'passwordauthentication no' <<<"$ST" && grep -qx 'kbdinteractiveauthentication no' <<<"$ST" \
+  && grep -qxE 'permitrootlogin (prohibit-password|without-password)' <<<"$ST" && ok "sshd key-only (ports $(awk '$1=="port"{print $2}' <<<"$ST" | tr '\n' ' '))" || bad "sshd is NOT key-only"
 # --- no game state left from rehearsals
 left=$(cd "$W" && ls ach.log evidence-count room-status outage-roster 2>/dev/null | tr '\n' ' ')
 [ -z "$left" ] && ok "no game state files left from rehearsals" || info "game state files present: $left (FORCE=1 cleanup.sh before the show)"

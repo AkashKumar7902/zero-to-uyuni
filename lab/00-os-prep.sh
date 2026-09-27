@@ -84,8 +84,11 @@ if systemctl is-enabled --quiet ssh.socket 2>/dev/null || systemctl is-active --
   systemctl daemon-reload; systemctl restart ssh.socket          # Ubuntu 24.04: socket activation; the generator reads Port
 elif systemctl is-active --quiet sshd; then systemctl reload sshd
 else systemctl reload ssh; fi
-sshd -T | grep -qx 'passwordauthentication no' && sshd -T | grep -qx 'kbdinteractiveauthentication no' \
-  && sshd -T | grep -qxE 'permitrootlogin (prohibit-password|without-password)' || die 'sshd hardening NOT effective (an sshd_config without the Include line? put the lines at its top)'
+# capture first: under pipefail, `sshd -T | grep -q` fails whenever grep exits early and sshd gets SIGPIPE
+ST=$(sshd -T)
+grep -qx 'passwordauthentication no' <<<"$ST" && grep -qx 'kbdinteractiveauthentication no' <<<"$ST" \
+  && grep -qxE 'permitrootlogin (prohibit-password|without-password)' <<<"$ST" \
+  || die 'sshd hardening NOT effective (an sshd_config without the Include line? put the lines at its top)'
 for p in 22 2222; do for _ in $(seq 10); do ss -H -lnt "sport = :$p" | grep -q . && break; sleep 1; done
   ss -H -lnt "sport = :$p" | grep -q . || die "sshd is not listening on $p"; done
 echo "sshd: key-only root on 22 and 2222"

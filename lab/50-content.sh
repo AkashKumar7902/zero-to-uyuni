@@ -10,7 +10,7 @@ t content_start
 kx(){ kubectl -n uyuni exec deploy/uyuni -c uyuni -- "$@"; }       # no stdin attached: nothing can block on a prompt
 kxi(){ kubectl -n uyuni exec -i deploy/uyuni -c uyuni -- "$@"; }   # stdin only where a file is piped in
 sc(){ kx spacecmd -y -u admin -p "$ADMIN_PASS" -- "$@"; }        # global -y answers confirmations [R5]; never on the projector [BOOT §2.7]
-has(){ sc "$1" 2>/dev/null | tr '\r' '\n' | grep -qx -- "$2"; }    # has <list-command> <exact name>
+has(){ local out; out=$(sc "$1" 2>/dev/null | tr '\r' '\n'); grep -qx -- "$2" <<<"$out"; }   # has <list-command> <exact name> (captured: no SIGPIPE)
 has group_list osas26-fleet || sc group_create osas26-fleet "oSAS26 attendee sandboxes"
 has group_list osas26-demo  || sc group_create osas26-demo  "oSAS26 Leap 16 demo VMs"
 has configchannel_list osas26-welcome || sc configchannel_create -n osas26-welcome -l osas26-welcome -d "oSAS26 welcome state" -t state

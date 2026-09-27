@@ -49,8 +49,8 @@ kubectl wait node --all --for=condition=Ready --timeout=10m
 rke2 --version | head -1 > rke2-version.txt; cat rke2-version.txt
 if [ "$OS" = leap16 ]; then
   # `ps -eZ` prints only the comm name "rke2", so grepping it for "rke2 server" never matches [R3]
-  ps -eo label,args | grep '[r]ke2 server' | tee rke2-selinux.log | grep -q container_runtime_t \
-    || die 'rke2 server is NOT in container_runtime_t - walk the §5.5 ladder'
+  ps -eo label,args | grep '[r]ke2 server' > rke2-selinux.log || true
+  grep -q container_runtime_t rke2-selinux.log || die 'rke2 server is NOT in container_runtime_t - walk the §5.5 ladder'
 else
   echo "MAC: AppArmor ($(aa-enabled 2>/dev/null || echo unknown)); no SELinux checks on this host"
 fi
