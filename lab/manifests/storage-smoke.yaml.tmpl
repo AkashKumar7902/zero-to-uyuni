@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: storage-smoke
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ${STORAGE_CLASS}
+  resources:
+    requests:
+      storage: 64Mi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: storage-smoke
+  namespace: default
+spec:
+  restartPolicy: Never
+  containers:
+    - name: writer
+      image: docker.io/library/busybox:1.36.1@sha256:b7f3d86d6e84fc17718c48bcde1450807faa2d56704205c697b4bd5df7b9e29f
+      imagePullPolicy: IfNotPresent
+      command:
+        - sh
+        - -c
+        - printf '%s\n' fresh-storage-proof | tee /data/proof.txt && sync
+      volumeMounts:
+        - name: data
+          mountPath: /data
+  volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: storage-smoke

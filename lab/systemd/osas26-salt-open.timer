@@ -1,0 +1,11 @@
+# 13:25 WIB on Sat 3 Oct 2026 (the car/train leg needs no phone toggle; FREE-GOLDEN §7.3)
+[Unit]
+Description=Open the oSAS26 Salt window at 13:25 WIB on Sat 3 Oct
+
+[Timer]
+OnCalendar=2026-10-03 06:25:00 UTC
+AccuracySec=1s
+Unit=osas26-salt-open.service
+
+[Install]
+WantedBy=timers.target

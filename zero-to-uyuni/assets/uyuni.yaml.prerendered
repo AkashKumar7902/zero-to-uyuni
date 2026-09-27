@@ -1,0 +1,1543 @@
+Pulled: registry.opensuse.org/uyuni/server-helm:2026.8.0
+Digest: sha256:7c05d50097e49760d3ad40bf4e95e7fe34c529caa0d533d3443009630897717b
+---
+# Source: server-helm/templates/config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/part-of: uyuni
+  name: uyuni-config
+  namespace: "default"
+data:
+  fqdn: uyuni.example.test
+  email: admin@uyuni.lab.org
+  db_host: db
+  db_port: "5432"
+  db_name: "susemanager"
+  reportdb_host: reportdb
+  reportdb_port: "5432"
+  reportdb_name: reportdb
+
+---
+# Source: server-helm/templates/pvcs.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ca-certs
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: "10Mi"
+
+---
+# Source: server-helm/templates/pvcs.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: etc-apache2
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: "1Mi"
+
+---
+# Source: server-helm/templates/pvcs.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: etc-cobbler
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: "1Mi"
+
+---
+# Source: server-helm/templates/pvcs.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: etc-postfix
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: "1Mi"
+
+---
+# Source: server-helm/templates/pvcs.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: etc-rhn
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: "1Mi"
+
+---
+# Source: server-helm/templates/pvcs.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: etc-salt
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: "1Mi"
+
+---
+# Source: server-helm/templates/pvcs.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: etc-sssd
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: "1Mi"
+
+---
+# Source: server-helm/templates/pvcs.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: etc-sysconfig
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: "20Mi"
+
+---
+# Source: server-helm/templates/pvcs.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: etc-systemd-multi
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: "1Mi"
+
+---
+# Source: server-helm/templates/pvcs.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: etc-systemd-sockets
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: "1Mi"
+
+---
+# Source: server-helm/templates/pvcs.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: etc-tomcat
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: "1Mi"
+
+---
+# Source: server-helm/templates/pvcs.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: run-salt-master
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: "10Mi"
+
+---
+# Source: server-helm/templates/pvcs.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: srv-formulametadata
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: "10Mi"
+
+---
+# Source: server-helm/templates/pvcs.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: srv-pillar
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: "10Mi"
+
+---
+# Source: server-helm/templates/pvcs.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: srv-salt
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: "10Mi"
+
+---
+# Source: server-helm/templates/pvcs.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: srv-spacewalk
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: "10Mi"
+
+---
+# Source: server-helm/templates/pvcs.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: srv-susemanager
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: "1Mi"
+
+---
+# Source: server-helm/templates/pvcs.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: srv-tftpboot
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: "300Mi"
+
+---
+# Source: server-helm/templates/pvcs.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: srv-www
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: "100Gi"
+
+---
+# Source: server-helm/templates/pvcs.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: var-cache
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: "10Gi"
+
+---
+# Source: server-helm/templates/pvcs.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: var-cobbler
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: "10Mi"
+
+---
+# Source: server-helm/templates/pvcs.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: var-log
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: "2Gi"
+
+---
+# Source: server-helm/templates/pvcs.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: var-pgsql18
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: "50Gi"
+
+---
+# Source: server-helm/templates/pvcs.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: var-salt
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: "10Mi"
+
+---
+# Source: server-helm/templates/pvcs.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: var-search
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: "10Gi"
+
+---
+# Source: server-helm/templates/pvcs.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: var-spacewalk
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: "100Gi"
+
+---
+# Source: server-helm/templates/services.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/part-of: uyuni
+  name: cobbler
+  namespace: "default"
+spec:
+  ports:
+    - name: cobbler
+      port: 25151
+  selector:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/part-of: uyuni
+  type: ClusterIP
+
+---
+# Source: server-helm/templates/services.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: db
+    app.kubernetes.io/part-of: uyuni
+  name: db
+  namespace: "default"
+spec:
+  ports:
+    - name: pgsql
+      port: 5432
+  selector:
+    app.kubernetes.io/component: db
+    app.kubernetes.io/part-of: uyuni
+  type: ClusterIP
+
+---
+# Source: server-helm/templates/services.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: db
+    app.kubernetes.io/part-of: uyuni
+  name: reportdb
+  namespace: "default"
+spec:
+  ports:
+    - name: pgsql
+      port: 5432
+  selector:
+    app.kubernetes.io/component: db
+    app.kubernetes.io/part-of: uyuni
+  type: ClusterIP
+
+---
+# Source: server-helm/templates/services.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/part-of: uyuni
+  name: salt
+  namespace: "default"
+spec:
+  ports:
+    - name: publish
+      port: 4505
+    - name: request
+      port: 4506
+  selector:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/part-of: uyuni
+  type: ClusterIP
+
+---
+# Source: server-helm/templates/services.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/part-of: uyuni
+  name: taskomatic-internal
+  namespace: "default"
+spec:
+  ports:
+    - name: jmx
+      port: 5557
+    - name: mtrx
+      port: 9800
+  selector:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/part-of: uyuni
+  type: ClusterIP
+
+---
+# Source: server-helm/templates/services.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/part-of: uyuni
+  name: tomcat-internal
+  namespace: "default"
+spec:
+  ports:
+    - name: node-exporter
+      port: 9100
+    - name: jmx
+      port: 5556
+    - name: pgsql-exporter
+      port: 9187
+  selector:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/part-of: uyuni
+  type: ClusterIP
+
+---
+# Source: server-helm/templates/services.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/part-of: uyuni
+  name: web
+  namespace: "default"
+spec:
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 80
+  selector:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/part-of: uyuni
+  type: ClusterIP
+
+---
+# Source: server-helm/templates/db.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/component: db
+    app.kubernetes.io/part-of: uyuni
+  name: db
+  namespace: "default"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: db
+      app.kubernetes.io/part-of: uyuni
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: db
+        app.kubernetes.io/part-of: uyuni
+    spec:
+      
+      containers:
+        - env:
+            - name: TZ
+              value: Etc/UTC
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  key: username
+                  name: db-admin-credentials
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: db-admin-credentials
+            - name: MANAGER_USER
+              valueFrom:
+                secretKeyRef:
+                  key: username
+                  name: db-credentials
+            - name: MANAGER_PASS
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: db-credentials
+            - name: REPORT_DB_USER
+              valueFrom:
+                secretKeyRef:
+                  key: username
+                  name: reportdb-credentials
+            - name: REPORT_DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: reportdb-credentials
+          image: registry.opensuse.org/uyuni/server-postgresql:2026.08
+          imagePullPolicy: IfNotPresent
+          name: db
+          volumeMounts:
+            - mountPath: /var/lib/pgsql/data
+              name: var-pgsql
+            - mountPath: /etc/pki
+              name: tls-secret
+      securityContext:
+        fsGroup: 999
+      volumes:
+        - name: var-pgsql
+          persistentVolumeClaim:
+            claimName: var-pgsql18
+        - name: tls-secret
+          secret:
+            items:
+              - key: tls.crt
+                path: tls/certs/spacewalk.crt
+              - key: tls.key
+                mode: 256
+                path: tls/private/pg-spacewalk.key
+              - key: ca.crt
+                path: trust/anchors/LOCAL-RHN-ORG-TRUSTED-SSL-CERT
+            secretName: db-cert
+
+---
+# Source: server-helm/templates/server.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/part-of: uyuni
+  name: uyuni
+  namespace: "default"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: server
+      app.kubernetes.io/part-of: uyuni
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: server
+        app.kubernetes.io/part-of: uyuni
+    spec:
+      
+      containers:
+      - env:
+        - name: container
+          value: oci
+        - name: TZ
+          value: Etc/UTC
+        - name: ADMIN_USER
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: admin-credentials
+              optional: false
+        - name: ADMIN_PASS
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: admin-credentials
+              optional: false
+        - name: MANAGER_USER
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: db-credentials
+              optional: false
+        - name: MANAGER_PASS
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: db-credentials
+              optional: false
+        - name: REPORT_DB_USER
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: reportdb-credentials
+              optional: false
+        - name: REPORT_DB_PASS
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: reportdb-credentials
+              optional: false
+        - name: MANAGER_DB_NAME
+          value: susemanager
+        - name: MANAGER_DB_HOST
+          value: db
+        - name: MANAGER_DB_CA_CERT
+          value: /etc/pki/trust/anchors/DB-RHN-ORG-TRUSTED-SSL-CERT
+        - name: MANAGER_DB_PORT
+          value: "5432"
+        - name: EXTERNALDB_PROVIDER
+        - name: ISS_PARENT
+        - name: REPORT_DB_NAME
+          value: reportdb
+        - name: REPORT_DB_HOST
+          value: reportdb
+        - name: REPORT_DB_CA_CERT
+          value: /etc/pki/trust/anchors/DB-RHN-ORG-TRUSTED-SSL-CERT
+        - name: REPORT_DB_PORT
+          value: "5432"
+        - name: MANAGER_ADMIN_EMAIL
+          valueFrom:
+            configMapKeyRef:
+              key: email
+              name: uyuni-config
+              optional: false
+        - name: MANAGER_MAIL_FROM
+          valueFrom:
+            configMapKeyRef:
+              key: email
+              name: uyuni-config
+              optional: false
+        - name: UYUNI_HOSTNAME
+          valueFrom:
+            configMapKeyRef:
+              key: fqdn
+              name: uyuni-config
+              optional: false
+        image: registry.opensuse.org/uyuni/server:2026.08
+        imagePullPolicy: IfNotPresent
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - /bin/sh
+              - -c
+              - spacewalk-service stop
+        name: uyuni
+        securityContext:
+          capabilities:
+            add:
+            - SYS_ADMIN
+          seLinuxOptions:
+            level: "s0"
+        ports:
+        - containerPort: 80
+        - containerPort: 4505
+        - containerPort: 4506
+        - containerPort: 25151
+        - containerPort: 9100
+        - containerPort: 5556
+        - containerPort: 5557
+        - containerPort: 9187
+        - containerPort: 9800
+        startupProbe:
+          exec:
+            command:
+            - /usr/bin/startup-check.sh
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3600 # Max 10h
+        livenessProbe:
+          exec:
+            command:
+            - /usr/bin/liveness-check.sh
+          timeoutSeconds: 5
+          failureThreshold: 5
+          periodSeconds: 60
+        readinessProbe:
+          httpGet:
+            path: /rhn/manager/api/api/getVersion
+            port: 80
+            scheme: HTTP
+          periodSeconds: 10
+          successThreshold: 1
+          initialDelaySeconds: 120
+        volumeMounts:
+        - mountPath: /var/lib/cobbler
+          name: var-cobbler
+        - mountPath: /var/lib/rhn/search
+          name: var-search
+        - mountPath: /var/lib/salt
+          name: var-salt
+        - mountPath: /var/cache
+          name: var-cache
+        - mountPath: /var/spacewalk
+          name: var-spacewalk
+        - mountPath: /var/log
+          name: var-log
+        - mountPath: /srv/salt
+          name: srv-salt
+        - mountPath: /srv/www/
+          name: srv-www
+        - mountPath: /srv/tftpboot
+          name: srv-tftpboot
+        - mountPath: /srv/formula_metadata
+          name: srv-formulametadata
+        - mountPath: /srv/pillar
+          name: srv-pillar
+        - mountPath: /srv/susemanager
+          name: srv-susemanager
+        - mountPath: /srv/spacewalk
+          name: srv-spacewalk
+        - mountPath: /etc/pki/trust/anchors/
+          name: ca-certs
+        - mountPath: /run/salt/master
+          name: run-salt-master
+        - mountPath: /etc/apache2
+          name: etc-apache2
+        - mountPath: /etc/systemd/system/multi-user.target.wants
+          name: etc-systemd-multi
+        - mountPath: /etc/systemd/system/sockets.target.wants
+          name: etc-systemd-sockets
+        - mountPath: /etc/salt
+          name: etc-salt
+        - mountPath: /etc/tomcat
+          name: etc-tomcat
+        - mountPath: /etc/cobbler
+          name: etc-cobbler
+        - mountPath: /etc/sysconfig
+          name: etc-sysconfig
+        - mountPath: /etc/postfix
+          name: etc-postfix
+        - mountPath: /etc/sssd
+          name: etc-sssd
+        - mountPath: /etc/rhn
+          name: etc-rhn
+        - mountPath: /etc/pki/trust/anchors/LOCAL-RHN-ORG-TRUSTED-SSL-CERT
+          name: ca-cert
+          readOnly: true
+          subPath: ca.crt
+        - mountPath: /usr/share/susemanager/salt/certs/RHN-ORG-TRUSTED-SSL-CERT
+          name: ca-cert
+          readOnly: true
+          subPath: ca.crt
+        - mountPath: /srv/www/htdocs/pub/RHN-ORG-TRUSTED-SSL-CERT
+          name: ca-cert
+          readOnly: true
+          subPath: ca.crt
+        - mountPath: /etc/pki/trust/anchors/DB-RHN-ORG-TRUSTED-SSL-CERT
+          name: db-ca-cert
+          readOnly: true
+          subPath: ca.crt
+        - mountPath: /etc/pki/
+          name: tls
+        - mountPath: /run
+          name: run
+        - mountPath: /sys/fs/cgroup
+          name: sys-fs-cgroup
+      initContainers:
+      - command:
+        - sh
+        - -x
+        - -c
+        - |2
+          # Fill the empty volumes
+          for vol in /var/lib/cobbler \
+                 /var/lib/rhn/search \
+                 /var/lib/salt \
+                 /var/cache \
+                 /var/log \
+                 /srv/salt \
+                 /srv/www \
+                 /srv/tftpboot \
+                 /srv/formula_metadata \
+                 /srv/pillar \
+                 /srv/susemanager \
+                 /srv/spacewalk \
+                 /etc/apache2 \
+                 /etc/rhn \
+                 /etc/systemd/system/multi-user.target.wants \
+                 /etc/systemd/system/sockets.target.wants \
+                 /etc/salt \
+                 /etc/tomcat \
+                 /etc/cobbler \
+                 /etc/sysconfig \
+                 /etc/postfix \
+                 /etc/sssd
+          do
+            chown --reference=$vol /mnt$vol;
+            chmod --reference=$vol /mnt$vol;
+            if [ -z "$(ls -A /mnt$vol)" ]; then
+                cp -a $vol/. /mnt$vol;
+            fi
+          done
+        image: registry.opensuse.org/uyuni/server:2026.08
+        imagePullPolicy: IfNotPresent
+        name: init-volumes
+        securityContext:
+          seLinuxOptions:
+            level: "s0"
+        volumeMounts:
+          - mountPath: /mnt/var/lib/cobbler
+            name: var-cobbler
+          - mountPath: /mnt/var/lib/rhn/search
+            name: var-search
+          - mountPath: /mnt/var/lib/salt
+            name: var-salt
+          - mountPath: /mnt/var/cache
+            name: var-cache
+          - mountPath: /mnt/var/spacewalk
+            name: var-spacewalk
+          - mountPath: /mnt/var/log
+            name: var-log
+          - mountPath: /mnt/srv/salt
+            name: srv-salt
+          - mountPath: /mnt/srv/www/
+            name: srv-www
+          - mountPath: /mnt/srv/tftpboot
+            name: srv-tftpboot
+          - mountPath: /mnt/srv/formula_metadata
+            name: srv-formulametadata
+          - mountPath: /mnt/srv/pillar
+            name: srv-pillar
+          - mountPath: /mnt/srv/susemanager
+            name: srv-susemanager
+          - mountPath: /mnt/srv/spacewalk
+            name: srv-spacewalk
+          - mountPath: /mnt/etc/pki/trust/anchors/
+            name: ca-certs
+          - mountPath: /mnt/run/salt/master
+            name: run-salt-master
+          - mountPath: /mnt/etc/apache2
+            name: etc-apache2
+          - mountPath: /mnt/etc/systemd/system/multi-user.target.wants
+            name: etc-systemd-multi
+          - mountPath: /mnt/etc/systemd/system/sockets.target.wants
+            name: etc-systemd-sockets
+          - mountPath: /mnt/etc/salt
+            name: etc-salt
+          - mountPath: /mnt/etc/tomcat
+            name: etc-tomcat
+          - mountPath: /mnt/etc/cobbler
+            name: etc-cobbler
+          - mountPath: /mnt/etc/sysconfig
+            name: etc-sysconfig
+          - mountPath: /mnt/etc/postfix
+            name: etc-postfix
+          - mountPath: /mnt/etc/sssd
+            name: etc-sssd
+          - mountPath: /mnt/etc/rhn
+            name: etc-rhn
+      - command:
+        - sh
+        - -c
+        - |2
+          until pg_isready -U $MANAGER_USER -h $MANAGER_DB_HOST -p $MANAGER_DB_PORT -d $MANAGER_DB_NAME; do
+            sleep 60
+          done
+
+          until pg_isready -U $REPORT_DB_USER -h $REPORT_DB_HOST -p $REPORT_DB_PORT -d $REPORT_DB_NAME; do
+            sleep 60
+          done
+        env:
+          - name: MANAGER_DB_HOST
+            valueFrom:
+              configMapKeyRef:
+                key: "db_host"
+                name: uyuni-config
+                optional: false
+          - name: MANAGER_DB_PORT
+            valueFrom:
+              configMapKeyRef:
+                key: "db_port"
+                name: uyuni-config
+                optional: false
+          - name: MANAGER_DB_NAME
+            valueFrom:
+              configMapKeyRef:
+                key: "db_name"
+                name: uyuni-config
+                optional: false
+          - name: MANAGER_USER
+            valueFrom:
+              secretKeyRef:
+                key: username
+                name: db-credentials
+                optional: false
+          - name: REPORT_DB_HOST
+            valueFrom:
+              configMapKeyRef:
+                key: "reportdb_host"
+                name: uyuni-config
+                optional: false
+          - name: REPORT_DB_PORT
+            valueFrom:
+              configMapKeyRef:
+                key: "reportdb_port"
+                name: uyuni-config
+                optional: false
+          - name: REPORT_DB_NAME
+            valueFrom:
+              configMapKeyRef:
+                key: "reportdb_name"
+                name: uyuni-config
+                optional: false
+          - name: REPORT_DB_USER
+            valueFrom:
+              secretKeyRef:
+                key: username
+                name: reportdb-credentials
+                optional: false
+        image: registry.opensuse.org/uyuni/server:2026.08
+        imagePullPolicy: IfNotPresent
+        name: db-waiter
+      volumes:
+      - name: var-cobbler
+        persistentVolumeClaim:
+          claimName: var-cobbler
+      - name: var-search
+        persistentVolumeClaim:
+          claimName: var-search
+      - name: var-salt
+        persistentVolumeClaim:
+          claimName: var-salt
+      - name: var-cache
+        persistentVolumeClaim:
+          claimName: var-cache
+      - name: var-spacewalk
+        persistentVolumeClaim:
+          claimName: var-spacewalk
+      - name: var-log
+        persistentVolumeClaim:
+          claimName: var-log
+      - name: srv-salt
+        persistentVolumeClaim:
+          claimName: srv-salt
+      - name: srv-www
+        persistentVolumeClaim:
+          claimName: srv-www
+      - name: srv-tftpboot
+        persistentVolumeClaim:
+          claimName: srv-tftpboot
+      - name: srv-formulametadata
+        persistentVolumeClaim:
+          claimName: srv-formulametadata
+      - name: srv-pillar
+        persistentVolumeClaim:
+          claimName: srv-pillar
+      - name: srv-susemanager
+        persistentVolumeClaim:
+          claimName: srv-susemanager
+      - name: srv-spacewalk
+        persistentVolumeClaim:
+          claimName: srv-spacewalk
+      - name: ca-certs
+        persistentVolumeClaim:
+          claimName: ca-certs
+      - name: run-salt-master
+        persistentVolumeClaim:
+          claimName: run-salt-master
+      - name: etc-apache2
+        persistentVolumeClaim:
+          claimName: etc-apache2
+      - name: etc-systemd-multi
+        persistentVolumeClaim:
+          claimName: etc-systemd-multi
+      - name: etc-systemd-sockets
+        persistentVolumeClaim:
+          claimName: etc-systemd-sockets
+      - name: etc-salt
+        persistentVolumeClaim:
+          claimName: etc-salt
+      - name: etc-tomcat
+        persistentVolumeClaim:
+          claimName: etc-tomcat
+      - name: etc-cobbler
+        persistentVolumeClaim:
+          claimName: etc-cobbler
+      - name: etc-sysconfig
+        persistentVolumeClaim:
+          claimName: etc-sysconfig
+      - name: etc-postfix
+        persistentVolumeClaim:
+          claimName: etc-postfix
+      - name: etc-sssd
+        persistentVolumeClaim:
+          claimName: etc-sssd
+      - name: etc-rhn
+        persistentVolumeClaim:
+          claimName: etc-rhn
+      - configMap:
+          defaultMode: 420
+          name: uyuni-ca
+        name: ca-cert
+      - configMap:
+          defaultMode: 420
+          name: db-ca
+        name: db-ca-cert
+      - name: tls
+        secret:
+          defaultMode: 420
+          items:
+          - key: tls.crt
+            path: tls/certs/spacewalk.crt
+          - key: tls.key
+            mode: 256
+            path: tls/private/spacewalk.key
+          secretName: uyuni-cert
+      - emptyDir:
+          medium: Memory
+          sizeLimit: 256Mi
+        name: run
+      - name: sys-fs-cgroup
+        emptyDir:
+
+---
+# Source: server-helm/templates/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  creationTimestamp: null
+  name: uyuni-ingress-ssl
+  namespace: "default"
+  annotations:
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.domains.n.main: "uyuni.example.test"
+    traefik.ingress.kubernetes.io/router.entrypoints: "websecure"
+    traefik.ingress.kubernetes.io/router.priority: "1"
+    traefik.ingress.kubernetes.io/router.middlewares: "default-uyuni-strip-prefixes@kubernetescrd"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+      - uyuni.example.test
+      secretName: uyuni-cert
+  rules:
+  - host: uyuni.example.test
+    http:
+      paths:
+      - path: /
+        backend:
+          service:
+            name: web 
+            port:
+              number: 80
+        pathType: Prefix
+
+---
+# Source: server-helm/templates/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  creationTimestamp: null
+  name: exporters-ingress-ssl
+  namespace: "default"
+  annotations:
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.domains.n.main: "uyuni.example.test"
+    traefik.ingress.kubernetes.io/router.entrypoints: "websecure"
+    traefik.ingress.kubernetes.io/router.priority: "100"
+    traefik.ingress.kubernetes.io/router.middlewares: "default-uyuni-strip-prefixes@kubernetescrd"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+      - uyuni.example.test
+      secretName: uyuni-cert
+  rules:
+  - host: uyuni.example.test
+    http:
+      paths:
+      - path: /postgresql-exporter
+        backend:
+          service:
+            name: tomcat-internal
+            port:
+              number: 9187
+        pathType: Prefix
+      - path: /node-exporter
+        backend:
+          service:
+            name: tomcat-internal
+            port:
+              number: 9100
+        pathType: Prefix
+      - path: /tasko-exporter
+        backend:
+          service:
+            name: taskomatic-internal
+            port:
+              number: 9800
+        pathType: Prefix
+      - path: /tasko-jmx
+        backend:
+          service:
+            name: taskomatic-internal
+            port:
+              number: 5557
+        pathType: Prefix
+      - path: /tomcat-jmx
+        backend:
+          service:
+            name: tomcat-internal
+            port:
+              number: 5556
+        pathType: Prefix
+
+---
+# Source: server-helm/templates/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  creationTimestamp: null
+  name: uyuni-ingress-ssl-redirect
+  namespace: "default"
+  annotations:
+    traefik.ingress.kubernetes.io/router.middlewares: "default-uyuni-https-redirect@kubernetescrd"
+    traefik.ingress.kubernetes.io/router.entrypoints: "web"
+    traefik.ingress.kubernetes.io/router.priority: "1"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: uyuni.example.test
+    http:
+      paths:
+      - backend:
+          service:
+            name: web
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+
+---
+# Source: server-helm/templates/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  creationTimestamp: null
+  name: uyuni-ingress-nossl
+  namespace: "default"
+  annotations:
+    traefik.ingress.kubernetes.io/router.tls: "false"
+    traefik.ingress.kubernetes.io/router.entrypoints: "web"
+    traefik.ingress.kubernetes.io/router.priority: "100"
+    traefik.ingress.kubernetes.io/router.middlewares: "default-uyuni-strip-prefixes@kubernetescrd"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: uyuni.example.test
+    http:
+      paths:
+      - backend:
+          service:
+            name: web
+            port:
+              number: 80
+        path: /pub
+        pathType: Prefix
+      - backend:
+          service:
+            name: web
+            port:
+              number: 80
+        path: /rhn/kickstart/DownloadFile
+        pathType: Prefix
+      - backend:
+          service:
+            name: web
+            port:
+              number: 80
+        path: /rhn/common/DownloadFile
+        pathType: Prefix
+      - backend:
+          service:
+            name: web
+            port:
+              number: 80
+        path: /rhn/rpc/api
+        pathType: Prefix
+      - backend:
+          service:
+            name: web
+            port:
+              number: 80
+        path: /rpc/api
+        pathType: Prefix
+      - backend:
+          service:
+            name: web
+            port:
+              number: 80
+        path: /rhn/errors
+        pathType: Prefix
+      - backend:
+          service:
+            name: web
+            port:
+              number: 80
+        path: /rhn/ty/TinyUrl
+        pathType: Prefix
+      - backend:
+          service:
+            name: web
+            port:
+              number: 80
+        path: /rhn/websocket
+        pathType: Prefix
+      - backend:
+          service:
+            name: web
+            port:
+              number: 80
+        path: /rhn/metrics
+        pathType: Prefix
+      - backend:
+          service:
+            name: web
+            port:
+              number: 80
+        path: /cobbler_api
+        pathType: Prefix
+      - backend:
+          service:
+            name: web
+            port:
+              number: 80
+        path: /cblr
+        pathType: Prefix
+      - backend:
+          service:
+            name: web
+            port:
+              number: 80
+        path: /httpboot
+        pathType: Prefix
+      - backend:
+          service:
+            name: web
+            port:
+              number: 80
+        path: /images
+        pathType: Prefix
+      - backend:
+          service:
+            name: web
+            port:
+              number: 80
+        path: /cobbler
+        pathType: Prefix
+      - backend:
+          service:
+            name: web
+            port:
+              number: 80
+        path: /os-images
+        pathType: Prefix
+      - backend:
+          service:
+            name: web
+            port:
+              number: 80
+        path: /tftp
+        pathType: Prefix
+      - backend:
+          service:
+            name: web
+            port:
+              number: 80
+        path: /docs
+        pathType: Prefix
+      - path: /postgresql-exporter
+        backend:
+          service:
+            name: tomcat-internal
+            port:
+              number: 9187
+        pathType: Prefix
+      - path: /node-exporter
+        backend:
+          service:
+            name: tomcat-internal
+            port:
+              number: 9100
+        pathType: Prefix
+      - path: /tasko-exporter
+        backend:
+          service:
+            name: taskomatic-internal
+            port:
+              number: 9800
+        pathType: Prefix
+      - path: /tasko-jmx
+        backend:
+          service:
+            name: taskomatic-internal
+            port:
+              number: 5557
+        pathType: Prefix
+      - path: /tomcat-jmx
+        backend:
+          service:
+            name: tomcat-internal
+            port:
+              number: 5556
+        pathType: Prefix
+
+---
+# Source: server-helm/templates/traefik-routes.yaml
+apiVersion: traefik.io/v1alpha1
+kind: IngressRouteTCP
+metadata:
+  name: reportdb-pgsql-route
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+  annotations:
+    kubernetes.io/ingress.class: traefik
+spec:
+  entryPoints:
+    - reportdb-pgsql
+  routes:
+    - match: HostSNI(`*`)
+      services:
+      - name: reportdb
+        port: 5432
+
+---
+# Source: server-helm/templates/traefik-routes.yaml
+apiVersion: traefik.io/v1alpha1
+kind: IngressRouteTCP
+metadata:
+  name: salt-publish-route
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+  annotations:
+    kubernetes.io/ingress.class: traefik
+spec:
+  entryPoints:
+    - salt-publish
+  routes:
+    - match: HostSNI(`*`)
+      services:
+      - name: salt
+        port: 4505
+
+---
+# Source: server-helm/templates/traefik-routes.yaml
+apiVersion: traefik.io/v1alpha1
+kind: IngressRouteTCP
+metadata:
+  name: salt-request-route
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+  annotations:
+    kubernetes.io/ingress.class: traefik
+spec:
+  entryPoints:
+    - salt-request
+  routes:
+    - match: HostSNI(`*`)
+      services:
+      - name: salt
+        port: 4506
+
+---
+# Source: server-helm/templates/traefik-routes.yaml
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: uyuni-https-redirect
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: uyuni
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true
+
+---
+# Source: server-helm/templates/traefik-routes.yaml
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: uyuni-strip-prefixes
+  namespace: default
+  labels:
+    app.kubernetes.io/part-of: uyuni
+spec:
+  stripPrefix:
+    prefixes:
+      - /postgresql-exporter
+      - /node-exporter
+      - /tasko-exporter
+      - /tasko-jmx
+      - /tomcat-jmx
+      - /saline

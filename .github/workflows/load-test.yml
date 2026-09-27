@@ -1,0 +1,25 @@
+# The Sep 30 load test (PLAN §5.10, FREE-GOLDEN G-LT60): 2 GitHub runners x N synthetic sandboxes joining HQ, with an
+# optional outage storm. Manual only. Before you run it: HQ's Salt window open (osas26-salt-window open 50), an accept
+# loop with CAP >= 2 x n, and attendee/server.env on main pointing at HQ. It never needs a secret.
+name: load-test
+on:
+  workflow_dispatch:
+    inputs:
+      n: {description: "sandboxes per runner (1-40)", default: "30", required: true}
+      hold_min: {description: "minutes to hold the joins", default: "40", required: true}
+      storm_at: {description: "minute of the outage storm (empty = none)", default: "25", required: false}
+permissions:
+  contents: read
+jobs:
+  joins:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [a, b]
+    steps:
+      - uses: actions/checkout@v4
+      - name: start the sandboxes and hold them
+        env: {N: "${{ inputs.n }}", PART: "${{ matrix.part }}", HOLD: "${{ inputs.hold_min }}", STORM: "${{ inputs.storm_at }}"}
+        run: bash lab/load-test.sh "$N" "l$PART" "$HOLD" "$STORM"

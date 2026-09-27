@@ -1,0 +1,13 @@
+# lab/manifests/uyuni-traefik.yaml - PLAN §5.5: the upstream uyuni-charts README's HelmChartConfig MINUS the
+# reportdb-pgsql 5432 entry (the README warns that the TCP route masks client IPs, which lets the report DB accept
+# non-SSL connections [K8S §5.3]). Every key is valid in the Traefik chart v40 schema [L17]. 10-rke2.sh installs it
+# into /var/lib/rancher/rke2/server/manifests/. The hostPorts are DNAT rules on every interface: the host guard
+# (lab/guard.nft) decides who may reach them (4505/4506 only inside the Salt window; 80/443 never from outside).
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata: {name: rke2-traefik, namespace: kube-system}
+spec:
+  valuesContent: |-
+    ports:
+      salt-publish: {port: 4505, expose: {default: true}, exposedPort: 4505, protocol: TCP, hostPort: 4505, containerPort: 4505}
+      salt-request: {port: 4506, expose: {default: true}, exposedPort: 4506, protocol: TCP, hostPort: 4506, containerPort: 4506}

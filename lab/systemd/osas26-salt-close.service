@@ -1,0 +1,8 @@
+[Unit]
+Description=oSAS26: close the Salt window (4505/4506) after the show
+Requires=osas26-guard.service
+After=osas26-guard.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/osas26-salt-window close

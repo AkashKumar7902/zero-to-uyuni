@@ -1,0 +1,9 @@
+# lab/loadtest/Containerfile - one synthetic attendee sandbox for lab/load-test.sh (PLAN §5.10, FREE-GOLDEN G-LT60).
+# The Killercoda "ubuntu" image stand-in: Ubuntu 24.04, the attendee kit in /root/osas26, preinstall.sh already run
+# (Helm + venv-salt-minion: the release asset first, the OBS apt repo second). Build context = the repo root.
+FROM docker.io/library/ubuntu:24.04
+RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+      ca-certificates curl gnupg iproute2 iptables procps >/dev/null && rm -rf /var/lib/apt/lists/*
+COPY attendee/ /root/osas26/
+RUN chmod +x /root/osas26/*.sh && touch /etc/osas26-sandbox && bash /root/osas26/preinstall.sh && test -x /usr/bin/venv-salt-minion
+CMD ["sleep", "infinity"]

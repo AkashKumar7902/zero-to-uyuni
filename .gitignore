@@ -1,0 +1,13 @@
+# never commit these: they hold secrets, private data or spoilers (PLAN §5.0)
+secrets.env
+secrets-values.yaml
+*.kubeconfig
+game.env
+game.hdr
+deny.env
+finale-aliases.sh
+aliases-final.sh
+credits-extra.txt
+counts-*.txt
+hq.html
+.DS_Store

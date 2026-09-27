@@ -1,0 +1,8 @@
+[Unit]
+Description=Start the oSAS26 accept loop at 15:55 WIB on Sat 3 Oct
+[Timer]
+OnCalendar=2026-10-03 08:55:00 UTC
+AccuracySec=1s
+Unit=osas26-accept.service
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,20 @@
+# lab/systemd/osas26-guard.service - the HQ host guard (lab/guard.nft, FREE-GOLDEN §6.5): loaded on every boot before
+# the network is up and before RKE2. rke2-server Requires= it (rke2-server.service.d/10-osas26-guard.conf), so RKE2
+# can never start without it. It re-creates only its own nft table; never enable Ubuntu's nftables.service.
+[Unit]
+Description=oSAS26 host guard (nft): 80/443 and the RKE2 ports closed on the public interface
+DefaultDependencies=no
+Wants=network-pre.target
+Before=network-pre.target rke2-server.service shutdown.target
+Conflicts=shutdown.target
+After=local-fs.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/nft -f /etc/osas26/guard.nft
+# lab_ok from /etc/osas26/lab-ok.list, and the Salt window reopened if the clock is inside the show window
+ExecStartPost=/usr/local/sbin/osas26-salt-window reconcile
+
+[Install]
+WantedBy=sysinit.target

@@ -1,0 +1,11 @@
+# 17:30 WIB on Sat 3 Oct 2026
+[Unit]
+Description=Close the oSAS26 Salt window at 17:30 WIB on Sat 3 Oct
+
+[Timer]
+OnCalendar=2026-10-03 10:30:00 UTC
+AccuracySec=1s
+Unit=osas26-salt-close.service
+
+[Install]
+WantedBy=timers.target

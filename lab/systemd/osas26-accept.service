@@ -1,0 +1,8 @@
+[Unit]
+Description=oSAS26 attendee key accept loop (15:55-17:00 WIB)
+[Service]
+Type=simple
+Environment=CAP=60
+ExecStart=/usr/local/sbin/osas26-accept-loop 65
+# (an installed copy of lab/accept-loop.sh with a bin_t label on SELinux hosts: see 40-harden.sh step 3)
+RuntimeMaxSec=70min

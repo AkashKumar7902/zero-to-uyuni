@@ -1,0 +1,55 @@
+#!/usr/sbin/nft -f
+# lab/guard.nft - the HQ host guard (FREE-GOLDEN §6.5). 00-os-prep.sh renders it to /etc/osas26/guard.nft with
+# @PUB@ = the public interface, and osas26-guard.service loads it on every boot BEFORE rke2-server (which Requires it).
+#
+# Why nft and why these hooks: RKE2 Traefik's hostPorts (80, 443, 4505, 4506) are CNI DNAT rules in PREROUTING, not
+# sockets, so INPUT never sees them. The `pre` chain therefore sits in prerouting at priority -300, before conntrack
+# (-200) and before DNAT (-100); a drop in any base chain is final, whatever Canal/kube-proxy's own chains say.
+# The guard matches the PUBLIC interface only: pods, lo, the node's own traffic (the presenter's SSH tunnel, the
+# server pod's hairpin to its own FQDN) and local leap containers are untouched.
+#
+# It re-creates ONLY its own table. Never use Ubuntu's /etc/nftables.conf or nftables.service: its `flush ruleset`
+# would also wipe RKE2/Canal's iptables-nft tables. ufw stays disabled.
+#
+# Sets:  salt_ok  empty = the Salt window is CLOSED; 0.0.0.0/0 = OPEN (lab/salt-window.sh, the osas26-salt-* timers)
+#        lab_ok   separate demo VMs (leap-a/leap-b) that may reach 80/443/4505/4506 (/etc/osas26/lab-ok.list)
+# IPv6: the table is inet, so 80/443/4505/4506 are dropped on v6 too (the saddr sets are IPv4 only).
+table inet osas26_guard
+delete table inet osas26_guard
+table inet osas26_guard {
+	set salt_ok {
+		type ipv4_addr
+		flags interval
+	}
+	set lab_ok {
+		type ipv4_addr
+		flags interval
+	}
+	chain pre {
+		type filter hook prerouting priority -300; policy accept;
+		iifname != "@PUB@" accept
+		tcp dport { 80, 443 } ip saddr @lab_ok accept
+		tcp dport { 80, 443 } drop
+		tcp dport { 4505, 4506 } ip saddr @salt_ok accept
+		tcp dport { 4505, 4506 } ip saddr @lab_ok accept
+		tcp dport { 4505, 4506 } drop
+	}
+	# NodePorts are DNAT'd in PREROUTING too (kube-proxy) and would bypass INPUT. None exist (G-FW checks it); if one
+	# ever appears, new connections to it from the public interface still die here (after conntrack, before DNAT).
+	chain pre_nodeport {
+		type filter hook prerouting priority -150; policy accept;
+		iifname != "@PUB@" accept
+		ct state new tcp dport 30000-32767 drop
+		ct state new udp dport 30000-32767 drop
+	}
+	# everything else that listens on the public interface (6443, 9345, 10250, 2379-2380, 8472/udp VXLAN, ...)
+	chain in {
+		type filter hook input priority -10; policy accept;
+		iifname != "@PUB@" accept
+		ct state established,related accept
+		tcp dport { 22, 2222 } accept
+		meta l4proto { icmp, ipv6-icmp } accept
+		udp dport { 68, 546 } accept
+		drop
+	}
+}

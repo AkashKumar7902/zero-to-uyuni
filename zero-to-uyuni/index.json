@@ -1,0 +1,20 @@
+{
+  "title": "oSAS26 · Geeko Corp: your first SRE shift (Uyuni)",
+  "description": "Read the real Uyuni Helm chart, join a live Uyuni fleet, take orders from HQ, survive an incident drill and crack a real case.",
+  "details": {
+    "intro":  { "text": "intro.md", "background": "preinstall.sh", "foreground": "wait.sh" },
+    "steps": [
+      { "title": "Level 1 · Read HQ's blueprint",        "text": "lab1.md", "verify": "verify1.sh" },
+      { "title": "Level 2 · Onboarding: join the fleet", "text": "lab2.md", "verify": "verify2.sh" },
+      { "title": "Level 3 · Orders from HQ",             "text": "lab3.md", "verify": "verify3.sh" },
+      { "title": "Level 4 · Incident drill",             "text": "lab4.md", "verify": "verify4.sh" }
+    ],
+    "finish": { "text": "finish.md" },
+    "assets": { "host01": [
+      { "file": "*.sh", "target": "/root/osas26", "chmod": "+x" },
+      { "file": "server.env", "target": "/root/osas26" },
+      { "file": "uyuni.yaml.prerendered", "target": "/root/osas26" },
+      { "file": "manual.adoc.saved", "target": "/root/osas26" } ] }
+  },
+  "backend": { "imageid": "ubuntu" }
+}
