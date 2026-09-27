@@ -27,6 +27,8 @@ jobs:
   sandbox:
     runs-on: ubuntu-24.04
     timeout-minutes: 180
+    defaults:
+      run: {shell: bash}
     steps:
       - uses: actions/checkout@v4
       - name: server.env

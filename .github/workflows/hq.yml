@@ -36,6 +36,8 @@ jobs:
     timeout-minutes: 358
     env:
       HAS_HOOKS_KEY: ${{ secrets.GEEKO_HQ_DEPLOY_KEY != '' }}
+    defaults:
+      run: {shell: bash}      # -eo pipefail: "build.sh | tee" must fail when build.sh fails
     steps:
       - name: inputs
         env: {HOURS: "${{ inputs.hours }}", ROOM: "${{ inputs.room }}", AMIN: "${{ inputs.accept_min }}", CAP: "${{ inputs.cap }}"}

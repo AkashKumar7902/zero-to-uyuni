@@ -86,6 +86,8 @@ install -d /etc/ssh/sshd_config.d
 printf 'PasswordAuthentication no\nKbdInteractiveAuthentication no\nPermitRootLogin prohibit-password\nPort 22\nPort 2222\n' > /etc/ssh/sshd_config.d/00-osas26.conf
 chmod 0644 /etc/ssh/sshd_config.d/00-osas26.conf
 if [ "$OS" = leap16 ] && ! semanage port -l | grep -E '^ssh_port_t' | grep -qw 2222; then semanage port -a -t ssh_port_t -p tcp 2222; fi
+# socket-activated sshd (Ubuntu 24.04) has no /run/sshd while no connection is open, and `sshd -t` needs it (a runner)
+install -d -m 0755 /run/sshd
 sshd -t
 if systemctl is-enabled --quiet ssh.socket 2>/dev/null || systemctl is-active --quiet ssh.socket 2>/dev/null; then
   systemctl daemon-reload; systemctl restart ssh.socket          # Ubuntu 24.04: socket activation; the generator reads Port
