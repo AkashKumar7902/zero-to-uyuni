@@ -4,13 +4,14 @@
 # Never copied: secrets.env, secrets-values.yaml, game.hdr, game.env, *.kubeconfig, rke2.yaml, the uyuni-charts tree.
 set -uo pipefail
 OUT=${1:?outdir}; W=/root/osas26; install -d "$OUT"
-for f in build.log build-phases.tsv timings.tsv check.txt lab.env relay.env server.env rke2-version.txt \
+for f in build.log build-phases.tsv timings.tsv check.txt lab.env relay.env cf.env server.env rke2-version.txt \
          case1-noclass.txt case1-nopod.txt game-post.log accept-*.log e2e-*.log; do
   for g in $W/$f; do [ -f "$g" ] && cp "$g" "$OUT/"; done
 done
 [ -d $W/runner ] && cp -r $W/runner "$OUT/runner"
 [ -d /run/osas26-relay ] && { mkdir -p "$OUT/relay"; cp /run/osas26-relay/*.log /run/osas26-relay/*.port /run/osas26-relay/*.probe "$OUT/relay/" 2>/dev/null; }
-journalctl -u 'osas26-relay*' --no-pager -o short-iso > "$OUT/relay/journal.txt" 2>/dev/null || true
+[ -d /run/osas26-cf ] && { mkdir -p "$OUT/relay-cf"; cp /run/osas26-cf/*.log* /run/osas26-cf/*.host /run/osas26-cf/*.probe "$OUT/relay-cf/" 2>/dev/null; }
+mkdir -p "$OUT/relay"; journalctl -u 'osas26-relay*' -u 'osas26-cf*' --no-pager -o short-iso > "$OUT/relay/journal.txt" 2>/dev/null || true
 free -m > "$OUT/runner/free-end.txt" 2>/dev/null; df -h > "$OUT/runner/df-end.txt" 2>/dev/null
 if command -v kubectl >/dev/null && [ -r /etc/rancher/rke2/rke2.yaml ]; then
   export KUBECONFIG=/etc/rancher/rke2/rke2.yaml

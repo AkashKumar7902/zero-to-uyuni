@@ -52,7 +52,7 @@ ${2:?command}" --arg d "$(date -u +%FT%TZ)" '{sids:$s,username:"root",groupname:
     aid=$(post system/scheduleScriptRun "$body" | jq -r .result)
     [[ $aid =~ ^[0-9]+$ ]] || die "scheduleScriptRun did not return an action id"
     wait_action "$aid" "${#ids[@]}" 300
-    get "system/getScriptResults?actionId=$aid" | jq -r '.result[] | "  sid \(.serverId) rc \(.returnCode): \(.output | split("\n") | map(select(length>0)) | .[0] // "")"' ;;
+    get "system/getScriptActionDetails?actionId=$aid" | jq -r '.result.result[]? | "  sid \(.serverId) rc \(.returnCode): \(.output | split("\n") | map(select(length>0)) | .[0] // "")"' ;;
   ping)
     t0=$(date +%s); acc=$(k salt-key --out=json | jq -r '.minions[]' | grep -cE "$RX")
     ans=$(k salt 'osas26-*' test.ping -t "${2:-15}" --out=json --static 2>/dev/null | jq '[to_entries[] | select(.value == true)] | length')

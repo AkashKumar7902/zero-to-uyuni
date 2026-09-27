@@ -44,6 +44,11 @@ jobs:
           echo "HQ_IP=$(sed -n 's/^SERVER_IP=//p' se/server.env)" >> "$GITHUB_ENV"
       - name: facts and the path to HQ's doors
         run: |
+          if grep -qx 'RELAY=cloudflare-quick' se/server.env; then   # the sandbox side of the relay (kit change D-K3)
+            sudo install -d -m 0755 /root/osas26 && sudo cp se/server.env /root/osas26/server.env
+            sudo systemd-run -q --unit=osas26-cf-doors -E SERVER_ENV_URL=file:///root/osas26/server.env /bin/bash "$PWD/lab/loadtest/cf-doors.sh"
+            for _ in $(seq 60); do sudo ss -Hltn '( sport = :4506 )' | grep -q . && break; sleep 1; done; sudo cat /tmp/cf-doors.log
+          fi
           echo "runner: $(nproc) vCPU, $(free -g | awk '/^Mem:/{print $2}') GiB, egress IPv4 $(curl -s -m 5 https://api.ipify.org || echo ?)"
           curl -s -m 3 -H Metadata:true 'http://169.254.169.254/metadata/instance/compute?api-version=2021-02-01' | jq -r '"azure: \(.location) \(.vmSize)"' || true
           for p in 4505 4506; do python3 - "$HQ_IP" "$p" <<'PY' || echo "door $p: probe error"

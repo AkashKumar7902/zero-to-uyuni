@@ -15,7 +15,8 @@ while [ "$(date +%s)" -lt "$end" ]; do
   load=$(cut -d' ' -f1-3 /proc/loadavg); disk=$(df -BG --output=avail / | tail -1 | tr -dc 0-9)
   pods=$(kubectl -n uyuni get pods --no-headers 2>/dev/null | awk '{printf "%s:%s ", $1, $2}' | sed 's/-[a-z0-9]*-[a-z0-9]*:/:/g')
   keys=$(k salt-key --out=json | jq -r '"keys acc \(.minions|length) pend \(.minions_pre|length)"' 2>/dev/null || echo "keys ?")
-  doors=""; for d in salt-pub salt-req ssh; do doors+="$d=$(cut -d' ' -f1-2 /run/osas26-relay/$d.probe 2>/dev/null || echo -) "; done
+  doors=""; for d in salt-pub salt-req ssh; do [ -e /run/osas26-relay/$d.port ] && doors+="$d=$(cut -d' ' -f1-2 /run/osas26-relay/$d.probe 2>/dev/null || echo -) "; done
+  for d in cf-pub cf-req cf-ssh; do [ -e /run/osas26-cf/$d.host ] && doors+="$d=$(cut -d' ' -f1-2 /run/osas26-cf/$d.probe 2>/dev/null || echo -) "; done
   printf '%s | %s | load %s | / %sG free | %s| %s | %s\n' "$(date -u +%T)" "$mem" "$load" "$disk" "$pods" "$keys" "$doors" | tee -a "$L"
   sleep 60
 done

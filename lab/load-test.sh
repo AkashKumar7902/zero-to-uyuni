@@ -8,6 +8,9 @@
 # STORM_AT_MIN: at that minute every minion is killed, and restarted 90 s later (the Level 4 outage storm).
 # Measure on HQ: start -> accepted (the loop's log), -> registered (board.sh), the promotion highstate, outage.sh.
 # Every container is removed at the end, also on Ctrl-C.
+# RELAY=cloudflare-quick in server.env (RUNNER-HQ, lab/runner/relay-cf.sh): each container also runs its own two
+# forwarders (lab/loadtest/cf-doors.sh, the proposed kit change D-K3); cloudflared is installed once on this machine
+# (sha256-pinned) and mounted read-only. The storm stops only the minions, never the forwarders.
 # Env: CT=docker|podman (default: docker if present). LT_SERVER_ENV=/path/server.env mounts that file over the image's
 #      copy (a server.env not pushed yet); SERVER_ENV_URL (default: the local copy, file:///root/osas26/server.env).
 set -euo pipefail
@@ -17,6 +20,16 @@ CT=${CT:-$(command -v docker || command -v podman)} || true; [ -n "$CT" ] || { e
 MNT=(); [ -n "${LT_SERVER_ENV:-}" ] && MNT=(-v "$(readlink -f "$LT_SERVER_ENV"):/root/osas26/server.env:ro")
 R=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd); IMG=osas26-lt:latest
 ENVURL=${SERVER_ENV_URL:-file:///root/osas26/server.env}
+PRE=""
+if [ -n "${LT_SERVER_ENV:-}" ] && grep -qx 'RELAY=cloudflare-quick' "$LT_SERVER_ENV"; then
+  if ! command -v cloudflared >/dev/null; then
+    T=$(mktemp); curl -fsSL --retry 3 -o "$T" https://github.com/cloudflare/cloudflared/releases/download/2026.9.3/cloudflared-linux-amd64
+    echo "77e26d8d900e0b8469f416239d14b5f296525fdf79fee6f511ef55609e3fbac2  $T" | sha256sum -c --quiet - && sudo install -m 0755 "$T" /usr/local/bin/cloudflared; rm -f "$T"
+  fi
+  MNT+=(-v /usr/local/bin/cloudflared:/usr/local/bin/cloudflared:ro -v "$R/lab/loadtest/cf-doors.sh:/root/cf-doors.sh:ro")
+  PRE="bash /root/cf-doors.sh & sleep 3; "
+  echo "$(date -u +%T) relay: cloudflare-quick (each sandbox runs its own forwarders, cf-doors.sh)"
+fi
 names=(); for i in $(seq -w 1 "$N"); do names+=("osas26-lt-$PFX$i"); done
 cleanup(){ echo "$(date -u +%T) removing ${#names[@]} containers"; "$CT" rm -f "${names[@]}" >/dev/null 2>&1 || true; }
 trap cleanup EXIT INT TERM
@@ -26,7 +39,7 @@ t0=$(date +%s)
 for n in "${names[@]}"; do
   nick=${n#osas26-lt-}
   "$CT" run -d --name "$n" --hostname "$n" -e SERVER_ENV_URL="$ENVURL" "${MNT[@]}" "$IMG" \
-    bash -c "/root/osas26/join.sh $nick > /root/join.log 2>&1; sleep infinity" >/dev/null
+    bash -c "${PRE}/root/osas26/join.sh $nick > /root/join.log 2>&1; sleep infinity" >/dev/null
   sleep 1
 done
 echo "$(date -u +%T) started $N joins in $(( $(date +%s) - t0 )) s"

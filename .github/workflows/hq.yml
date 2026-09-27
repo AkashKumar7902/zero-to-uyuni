@@ -1,7 +1,9 @@
 # RUNNER-HQ (lab/runner/): HQ built from zero on a GitHub-hosted runner by lab/build.sh, with its Salt doors (4505,
-# 4506) and SSH on a public TCP relay that needs no account (bore.pub). No web port is ever relayed: the Web UI is an
-# SSH tunnel. Start it from the GitHub app (Actions > hq > Run workflow) or from a terminal:
-#   gh workflow run hq.yml -R AkashKumar7902/zero-to-uyuni -f hours=5 -f game=off
+# 4506) and SSH on public relays that need no account: bore.pub (raw TCP; at most ~12-25 minions, RUNNER-HQ-REPORT.md
+# §5) or Cloudflare quick tunnels (relay=cloudflare-quick: each sandbox runs lab/loadtest/cf-doors.sh, kit change
+# D-K3). No web port is ever relayed: the Web UI is an SSH tunnel. Start it from the GitHub app (Actions > hq > Run
+# workflow) or from a terminal:
+#   gh workflow run hq.yml -R AkashKumar7902/zero-to-uyuni -f hours=5 -f relay=cloudflare-quick -f game=off
 # The doors are printed in the live log of the "relay" steps (the GitHub app shows it while the job runs) and saved as
 # the artifact "doors" (relay.env) at once; server.env (artifact "server-env") when the build is done (~20-40 min):
 #   gh run download <run id> -R AkashKumar7902/zero-to-uyuni -n doors     (works while the job is running)
@@ -14,9 +16,9 @@ on:
     inputs:
       hours: {description: "hours HQ stays up after the build (0.25-5.5; the job itself ends at 6 h)", default: "5", required: true}
       relay:
-        description: "relay: bore.pub gives exactly 4505/4506 (what the kit needs) or waits for them; bore.pub-any takes any free ports (needs the D-K2 kit)"
+        description: "Salt relay: bore.pub = exactly 4505/4506, the kit as it is, <= ~12-25 minions; bore.pub-any = any free ports (needs the D-K2 kit); cloudflare-quick = no connection cap (needs the D-K3 kit: cf-doors.sh)"
         type: choice
-        options: [bore.pub, bore.pub-any]
+        options: [bore.pub, bore.pub-any, cloudflare-quick]
         default: bore.pub
       game:
         description: "game hooks: off = installed with GAME_OFF=1; on = live posts (needs GOLDEN_TOKEN)"
@@ -55,9 +57,9 @@ jobs:
         env: {RELAY: "${{ inputs.relay }}"}
         run: |
           sudo install -d -m 0755 /etc/osas26
-          printf 'RELAY_SERVER=bore.pub\nSALT_FIXED=%s\nSSH_WANT=0\nPORT_HOLD=600\nFALLBACK=0\nNODE_IP=%s\n' \
+          printf 'RELAY_SERVER=bore.pub\nSALT_FIXED=%s\nSSH_WANT=0\nPORT_HOLD=600\nFALLBACK=0\nNODE_IP=%s\nSALT_RELAY=%s\n' \
             "$([ "$RELAY" = bore.pub ] && echo 1 || echo 0)" "$(ip -o -4 route get 1.1.1.1 | sed -n 's/.* src \([^ ]*\).*/\1/p')" \
-            | sudo tee /etc/osas26/relay.conf
+            "$([ "$RELAY" = cloudflare-quick ] && echo cloudflare-quick || echo bore)" | sudo tee /etc/osas26/relay.conf
           sudo bash /root/zero-to-uyuni/lab/runner/relay.sh install
           sudo bash /root/zero-to-uyuni/lab/runner/relay.sh up ssh
           . <(sudo cat /root/osas26/relay.env)
@@ -65,31 +67,43 @@ jobs:
             echo '```'
             echo "ssh -i ~/.ssh/osas26_ed25519 -p $SSH_PORT root@$RELAY_SERVER      # host key $SSH_HOSTKEY"
             echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$RELAY" = cloudflare-quick ]; then     # a second SSH door, independent of bore.pub
+            sudo bash /root/zero-to-uyuni/lab/runner/relay-cf.sh install && sudo bash /root/zero-to-uyuni/lab/runner/relay-cf.sh up ssh || echo "::warning::the Cloudflare SSH door is not up"
+            h=$(sudo sed -n 's/^CF_SSH_HOST=//p' /root/osas26/cf.env)
+            echo "second SSH door: ssh -o ProxyCommand='cloudflared access ssh --hostname %h' root@$h" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
       - name: publish the doors as an artifact now (readable while the job runs; the job summary appears only at the end)
-        run: mkdir -p doors && sudo cat /root/osas26/relay.env > doors/relay.env
+        run: mkdir -p doors && sudo cat /root/osas26/relay.env > doors/relay.env && { sudo cat /root/osas26/cf.env 2>/dev/null || true; } > doors/cf.env
       - uses: actions/upload-artifact@v4
-        with: {name: doors, path: doors/relay.env, retention-days: 3, overwrite: true}
+        with: {name: doors, path: doors, retention-days: 3, overwrite: true}
       - name: build HQ from zero (lab/build.sh, RUNNER=1)
         timeout-minutes: 150
         env: {CAP: "${{ inputs.cap }}"}
         run: sudo env RUNNER=1 KEY_LIMIT="$CAP" bash /root/zero-to-uyuni/lab/build.sh 2>&1 | sudo tee /root/osas26/build.log
       - name: relay - the Salt doors (4505, 4506) and server.env
+        env: {RELAY: "${{ inputs.relay }}"}
         run: |
-          sudo bash /root/zero-to-uyuni/lab/runner/relay.sh up salt || echo "::warning::Salt doors not as wanted (see relay status)"
+          if [ "$RELAY" = cloudflare-quick ]; then
+            sudo bash /root/zero-to-uyuni/lab/runner/relay-cf.sh up salt || echo "::warning::Cloudflare Salt doors not up (see relay-cf status)"
+            sudo bash /root/zero-to-uyuni/lab/runner/relay-cf.sh status
+          else
+            sudo bash /root/zero-to-uyuni/lab/runner/relay.sh up salt || echo "::warning::Salt doors not as wanted (see relay status)"
+          fi
           sudo bash /root/zero-to-uyuni/lab/runner/relay.sh status
           mkdir -p out && sudo bash /root/zero-to-uyuni/lab/runner/server-env.sh > out/server.env || echo "::error::server.env not written"
           sudo bash /root/zero-to-uyuni/lab/runner/e2e.sh pubport || true
           . <(sudo cat /root/osas26/relay.env)
           { echo "### RUNNER-HQ: HQ is up"
-            echo "Salt doors: \`$RELAY_SERVER:$SALT_PUB_PORT\` (publish), \`$RELAY_SERVER:$SALT_REQ_PORT\` (request), relay IPv4 $RELAY_IP"
+            if [ "$RELAY" = cloudflare-quick ]; then echo "Salt doors: Cloudflare quick tunnels (server.env CF_PUB_HOST, CF_REQ_HOST); each sandbox runs cf-doors.sh"
+            else echo "Salt doors: \`$RELAY_SERVER:$SALT_PUB_PORT\` (publish), \`$RELAY_SERVER:$SALT_REQ_PORT\` (request), relay IPv4 $RELAY_IP"; fi
             echo "SSH: \`ssh -i ~/.ssh/osas26_ed25519 -p $SSH_PORT root@$RELAY_SERVER\` (host key $SSH_HOSTKEY)"
             echo "Web UI: \`ssh -i ~/.ssh/osas26_ed25519 -p $SSH_PORT -N -L 127.0.0.1:18443:$NODE_IP:443 root@$RELAY_SERVER\`, then https://$(sudo sed -n 's/^FQDN=//p' /root/osas26/lab.env):18443/ with the name mapped to 127.0.0.1"
             echo; echo "server.env (the artifact **server-env**):"; echo '```'; cat out/server.env; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with: {name: server-env, path: out/server.env, retention-days: 3}
-      - run: sudo cat /root/osas26/relay.env > doors/relay.env
+      - run: sudo cat /root/osas26/relay.env > doors/relay.env && { sudo cat /root/osas26/cf.env 2>/dev/null || true; } > doors/cf.env
       - uses: actions/upload-artifact@v4
-        with: {name: doors, path: doors/relay.env, retention-days: 3, overwrite: true}
+        with: {name: doors, path: doors, retention-days: 3, overwrite: true}
       - name: geeko-hq's golden hooks (sparse checkout)
         if: env.HAS_HOOKS_KEY == 'true'
         uses: actions/checkout@v4
