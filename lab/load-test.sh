@@ -32,7 +32,7 @@ if [ -n "${LT_SERVER_ENV:-}" ] && grep -qx 'RELAY=cloudflare-quick' "$LT_SERVER_
 fi
 names=(); for i in $(seq -w 1 "$N"); do names+=("osas26-lt-$PFX$i"); done
 cleanup(){ echo "$(date -u +%T) removing ${#names[@]} containers"; "$CT" rm -f "${names[@]}" >/dev/null 2>&1 || true; }
-trap cleanup EXIT INT TERM
+trap cleanup EXIT; trap "exit 143" INT TERM            # a signal ends the run; the EXIT trap removes the containers
 echo "$(date -u +%T) building $IMG from $R (attendee/ + preinstall.sh)"
 "$CT" build -q -t "$IMG" -f "$R/lab/loadtest/Containerfile" "$R" >/dev/null
 t0=$(date +%s)
