@@ -25,7 +25,7 @@ printf '%s\n' registry.opensuse.org/uyuni/server:2026.08 registry.opensuse.org/u
 S=$(mktemp -d); trap 'rm -rf "$S"' EXIT
 curl -fsSL --retry 3 -o "$S/sha256sum-amd64.txt" "$U/sha256sum-amd64.txt"
 for f in rke2-images-core.linux-amd64.tar.zst rke2-images-canal.linux-amd64.tar.zst; do
-  if ! (cd "$IMG" && grep -E " $f\$" "$S/sha256sum-amd64.txt" | sha256sum -c --quiet - 2>/dev/null); then
+  if ! { [ -s "$IMG/$f" ] && (cd "$IMG" && grep -E " $f\$" "$S/sha256sum-amd64.txt" | sha256sum -c --quiet - >/dev/null 2>&1); }; then
     curl -fsSL --retry 3 -o "$IMG/$f" "$U/$f"; fi
 done
 (cd "$IMG" && grep -E ' rke2-images-(core|canal)\.linux-amd64\.tar\.zst$' "$S/sha256sum-amd64.txt" | sha256sum -c -)
@@ -56,12 +56,15 @@ else
 fi
 t rke2_ready
 # the Salt door: the rke2-traefik chart must pick up the HelmChartConfig (hostPorts are DNAT rules, not sockets)
-for _ in $(seq 120); do
-  hp=$(kubectl -n kube-system get ds rke2-traefik -o jsonpath='{range .spec.template.spec.containers[0].ports[*]}{.hostPort}{" "}{end}' 2>/dev/null || true)
-  case " $hp " in *" 4506 "*) break ;; esac; sleep 5; done
-case " $hp " in *" 4505 "*" 4506 "*|*" 4506 "*" 4505 "*) echo "rke2-traefik hostPorts: $hp" ;;
-  *) kubectl -n kube-system logs job/helm-install-rke2-traefik --tail=40 || true
-     die "Traefik has no Salt hostPorts (if the job rejects the values: remove containerPort, §5.5)" ;; esac
+# (each port is checked on its own: one glob for "4505 then 4506" missed the adjacent pair, defect D2)
+hp=""; for _ in $(seq 120); do
+  hp=$(kubectl -n kube-system get ds rke2-traefik -o jsonpath='{range .spec.template.spec.containers[0].ports[*]}{.name}={.hostPort}{" "}{end}' 2>/dev/null || true)
+  case " $hp " in *" salt-request=4506 "*) break ;; esac; sleep 5; done
+case " $hp " in *" salt-publish=4505 "*) ;; *) hp="";; esac
+case " $hp " in *" salt-request=4506 "*) ;; *) hp="";; esac
+if [ -n "$hp" ]; then echo "rke2-traefik ports: $hp"
+else kubectl -n kube-system logs job/helm-install-rke2-traefik --tail=40 || true
+     die "Traefik has no Salt hostPorts (if the job rejects the values: remove containerPort, §5.5)"; fi
 kubectl -n kube-system rollout status ds/rke2-traefik --timeout=10m
 kubectl -n kube-system get helmchart,helmchartconfig | grep -i traefik
 iptables -t nat -S | grep -E -- '--dport (4505|4506)' || die "no Salt DNAT rules"

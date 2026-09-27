@@ -8,11 +8,13 @@
 # STORM_AT_MIN: at that minute every minion is killed, and restarted 90 s later (the Level 4 outage storm).
 # Measure on HQ: start -> accepted (the loop's log), -> registered (board.sh), the promotion highstate, outage.sh.
 # Every container is removed at the end, also on Ctrl-C.
-# Env: SERVER_ENV_URL (default: the copy baked into the image, so a private or unpushed server.env works too).
+# Env: CT=docker|podman (default: docker if present). LT_SERVER_ENV=/path/server.env mounts that file over the image's
+#      copy (a server.env not pushed yet); SERVER_ENV_URL (default: the local copy, file:///root/osas26/server.env).
 set -euo pipefail
 N=${1:?usage: load-test.sh N PREFIX [HOLD_MIN] [STORM_AT_MIN]}; PFX=${2:?prefix, e.g. la}; HOLD=${3:-30}; STORM=${4:-}
 [[ $PFX =~ ^[a-z]{1,4}$ ]] && [[ $N =~ ^[0-9]+$ ]] && [ "$N" -ge 1 ] && [ "$N" -le 99 ] || { echo "N 1-99, PREFIX a-z (1-4)"; exit 2; }
-CT=$(command -v docker || command -v podman) || { echo "needs docker or podman"; exit 2; }
+CT=${CT:-$(command -v docker || command -v podman)} || true; [ -n "$CT" ] || { echo "needs docker or podman"; exit 2; }
+MNT=(); [ -n "${LT_SERVER_ENV:-}" ] && MNT=(-v "$(readlink -f "$LT_SERVER_ENV"):/root/osas26/server.env:ro")
 R=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd); IMG=osas26-lt:latest
 ENVURL=${SERVER_ENV_URL:-file:///root/osas26/server.env}
 names=(); for i in $(seq -w 1 "$N"); do names+=("osas26-lt-$PFX$i"); done
@@ -23,7 +25,7 @@ echo "$(date -u +%T) building $IMG from $R (attendee/ + preinstall.sh)"
 t0=$(date +%s)
 for n in "${names[@]}"; do
   nick=${n#osas26-lt-}
-  "$CT" run -d --name "$n" --hostname "$n" -e SERVER_ENV_URL="$ENVURL" "$IMG" \
+  "$CT" run -d --name "$n" --hostname "$n" -e SERVER_ENV_URL="$ENVURL" "${MNT[@]}" "$IMG" \
     bash -c "/root/osas26/join.sh $nick > /root/join.log 2>&1; sleep infinity" >/dev/null
   sleep 1
 done
