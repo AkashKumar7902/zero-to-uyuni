@@ -13,6 +13,25 @@ Your crew's hut never lit up on the big screen? Ask a helper, then `touch /tmp/o
 
 Press **CHECK**.
 
+<details><summary>Your banner said YOUR OWN HQ? Your steps are here.</summary>
+
+Akash sends the room's orders from Uyuni. Your master sends yours: the same two kinds of order.
+
+1. A **remote command**, as root:
+`salt "$(cat /etc/osas26-id)" cmd.run '/root/osas26/hq-say.sh welcome'`{{exec}}
+2. A **state**: the recipe of your crew card. Apply it, then read the card:
+`salt "$(cat /etc/osas26-id)" state.apply manager_org_1.osas26-welcome`{{exec}}
+`cat /etc/motd`{{exec}}
+3. When Akash changes the room's order, change yours: edit the order line in your recipe.
+`sed -i 's/(waiting for orders from HQ...)/find out what happened to the database./' /srv/salt/manager_org_1/osas26-welcome/init.sls`{{exec}}
+Vote with the room first. Then look at your card: `cat /etc/motd`{{exec}}
+Apply the recipe again, and look once more:
+`salt "$(cat /etc/osas26-id)" state.apply manager_org_1.osas26-welcome`{{exec}}
+`cat /etc/motd`{{exec}}
+
+Does your master know whether you finished Level 1? Look at your card. Press **CHECK**.
+</details>
+
 <details><summary>Waiting for the room? Side quests (optional, never ranked)</summary>
 
 - **R7 · HQ's diary entry**: which two kinds of order reached your machine?

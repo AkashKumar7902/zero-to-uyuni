@@ -27,6 +27,11 @@ When the speaker says **"fix.sh allowed"**, `/root/osas26/fix.sh`{{exec}} is fin
 
 Press **CHECK**, then wait for **Promotions** and run `cat /etc/motd`{{exec}}
 
+**Your own HQ?** The same drill and the same runbook: break.sh cuts your minion off from YOUR master.
+While door 4506 is blocked, your own `salt` commands wait too: they use the same door.
+After step 5, ask your master (the minion needs about 10 seconds): `salt "$(cat /etc/osas26-id)" test.ping`{{exec}}
+Promotions come from you: `salt "$(cat /etc/osas26-id)" state.apply manager_org_1.osas26-welcome`{{exec}} then `cat /etc/motd`{{exec}}
+
 <details><summary>Your machine is back? Side quests (optional, never ranked)</summary>
 
 - **F6 · The diary's own words**: which word in your minion's log named the fault?

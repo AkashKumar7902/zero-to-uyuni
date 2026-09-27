@@ -4,9 +4,14 @@
 # "effective" = what Salt itself reports, the command the runbook's step 1 teaches.)
 # The game hears the facts (counts only): how many crews met the "restart trap" (config fixed, minion not restarted:
 # the most common real mistake, shown as normal, never by name), and the fixed incident. HQ decides the relight.
+# YOUR OWN HQ (solo.sh): the same checks; then, in the background, your own master asks the minion "are you there?"
+# (test.ping) until it answers, and only that answer tells the game "your own HQ hears your machine again".
 D=$(dirname "$0")
+[ -e "$D/game.sh" ] || D=/root/osas26   # Killercoda may run a CHECK from another directory: the kit lives in /root/osas26 (UBR 5.1)
 # shellcheck source=game.sh
 . "$D/game.sh"
+# shellcheck source=solo.sh
+. "$D/solo.sh"
 MD=${MINION_D:-/etc/venv-salt-minion/minion.d}
 FQDN_FILE=${FQDN_FILE:-/etc/osas26-fqdn}
 CHECK=${CHECK_FILE:-/root/.check}
@@ -31,6 +36,7 @@ if [ "$(eff)" = "$(cat "$FQDN_FILE" 2>/dev/null)" ] \
    && systemctl is-active --quiet venv-salt-minion; then
   "$D/achieve.sh" doctor "Incident closed: you brought your machine back."
   game_post l4.fixed "$(bash "$D/probe.sh" incident)"
+  solo_on && game_detach bash "$D/probe.sh" solo back
   exit 0
 fi
 test -e "$SKIP" && exit 0

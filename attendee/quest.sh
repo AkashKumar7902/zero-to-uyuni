@@ -11,11 +11,15 @@
 # Safe by construction: no quest restarts or breaks the minion, edits minion.d or keys, needs apt, prints all of
 # pillar or loads HQ (the heaviest is one state.apply of one SLS). Quests open by LOCAL facts, so they work offline.
 # Every command and expected output was verified with real Salt 3006.9 and a real render of server-helm 2026.8.0.
+# YOUR OWN HQ (solo.sh): every quest works against your own master too, with its own words where the story differs
+# (R3 R4 R5 R6 R7 F2 F3 F4 F7 D2). D3 and D4 read files only Uyuni writes, so they wait for the room's HQ.
 set -u
 trap '' PIPE        # piped into head or grep, a solve still counts: output may be cut, the rest of the script runs
 D=$(dirname "$0")
 # shellcheck source=game.sh
 . "$D/game.sh"
+# shellcheck source=solo.sh
+. "$D/solo.sh"
 SALT=${SALT_CALL:-venv-salt-call}
 LOG=${MINION_LOG:-/var/log/venv-salt-minion.log}
 PKI=${MINION_PKI:-/etc/venv-salt-minion/pki/minion}
@@ -45,6 +49,7 @@ healthy(){ local m; m=$(timeout 20 "$SALT" --local config.get master 2>/dev/null
            && ! iptables -C OUTPUT -p tcp --dport 4506 -j REJECT 2>/dev/null; }
 fixed(){ broke && { test -e "$ACH/ach.doctor" || healthy; }; }
 org(){ local o; o=$(timeout 25 "$SALT" pillar.get org_id 2>/dev/null | first); case $o in ''|*[!0-9]*) echo 1 ;; *) echo "$o" ;; esac; }
+central(){ ! solo_on; }                                   # the room's HQ (Uyuni), not your own
 fault_mode(){ local m; m=$(tr -cd 'a-z' < "$BREAK_FILE" 2>/dev/null); case "$m" in dns|port) echo "$m" ;; esac; }
 # Quest X1's captured diaries (real Salt 3006.9, geeko-hq ideation/learning-design/verification/salt-lab-transcript.md
 # §3). Replace them with the G3 captures from a real Killercoda sandbox joined to HQ when those exist.
@@ -69,13 +74,16 @@ F6|field|4|The diary'"'"'s own words|fixed|Level 4, after your fix
 F7|field|4|Up and down|ordered|Level 3
 D1|deep|5|Follow a knock|has_bp|Level 1
 D2|deep|6|Drift and repair|ordered|Level 3, after your card arrives
-D3|deep|5|Two files, one truth|joined|Level 2
-D4|deep|5|What is in your highstate?|ordered|Level 3
+D3|deep|5|Two files, one truth|joined central|Level 2
+D4|deep|5|What is in your highstate?|ordered central|Level 3
 D5|deep|6|Ticket 104: already fixed?|joined|Level 2
 X1|deep|4|The other fault|fixed|Level 4, after your fix'
 
 meta(){ printf '%s\n' "$QUESTS" | awk -F'|' -v id="$1" 'toupper($1)==toupper(id)'; }
 is_open(){ local needs f; needs=$(meta "$1" | cut -d'|' -f5); for f in $needs; do "$f" || return 1; done; }
+hq_only(){ solo_on && meta "$1" | cut -d'|' -f5 | grep -qw central; }   # a quest about what only Uyuni writes
+HQ_ONLY="needs the room's HQ: only Uyuni writes what it reads. Every other quest works with your own HQ."
+title_of(){ if [ "$1" = R6 ] && solo_on; then echo "Two jobs, one machine"; else meta "$1" | cut -d'|' -f4; fi; }
 QFP=""                                             # R4 only: the PUBLIC fingerprint tail (xx:xx), for HQ's cross-check
 # The first solve tells the game {id, tier[, public fp]} (≤ 4 s); the [game] line prints only if the game took it.
 done_mark(){ mkdir -p "$QD"; [ -e "$QD/$1.done" ] && return 0; touch "$QD/$1.done"
@@ -93,8 +101,10 @@ list(){
     printf '%s\n' "$QUESTS" | while IFS='|' read -r id t mins title needs where; do
       [ "$t" = "$tier" ] || continue
       if [ -e "$QD/$id.done" ]; then st="${G}solved${N}"
+      elif hq_only "$id"; then st="needs the room's HQ"
       elif is_open "$id"; then st="${Y}open${N}  ->  quest.sh show $id"
       else st="opens at $where"; fi
+      [ "$id" = R6 ] && title=$(title_of R6)
       printf '  %-3s %-30s ~%s min   %s\n' "$id" "$title" "$mins" "$st"
     done
   done
@@ -105,8 +115,9 @@ list(){
 show(){
   local id; id=$(printf '%s' "$1" | tr 'a-z' 'A-Z')
   [ -n "$(meta "$id")" ] || { echo "No quest called $1. Type: /root/osas26/quest.sh"; exit 1; }
+  hq_only "$id" && { echo "$id $HQ_ONLY"; exit 0; }
   is_open "$id" || { echo "$id opens at $(meta "$id" | cut -d'|' -f6). Nothing is missed: it waits for you."; exit 0; }
-  printf '%s%s · %s%s   (%s · about %s min)\n\n' "$C" "$id" "$(meta "$id" | cut -d'|' -f4 | tr 'a-z' 'A-Z')" "$N" \
+  printf '%s%s · %s%s   (%s · about %s min)\n\n' "$C" "$id" "$(title_of "$id" | tr 'a-z' 'A-Z')" "$N" \
          "$(meta "$id" | cut -d'|' -f2)" "$(meta "$id" | cut -d'|' -f3)"
   case $id in
   R1) cat <<'EOF'
@@ -145,7 +156,8 @@ Question: what are the LAST TWO PAIRS of your fingerprint? (like 4f:9c)
 Answer:   /root/osas26/quest.sh answer R4 <xx:xx>
 EOF
   ;;
-  R5) cat <<'EOF'
+  R5) solo_on && echo "Your own HQ: HQ below is YOUR master, and its yes was YOUR salt-key -a."
+      cat <<'EOF'
 Before HQ said yes, your minion knocked and waited. Its diary (the log) remembers.
 Run:
   grep 'cached the public key' /var/log/venv-salt-minion.log | tail -n 2
@@ -160,7 +172,17 @@ EOF
  for 10 seconds before attempting to re-authenticate)
 EOF
   ;;
-  R6) cat <<'EOF'
+  R6) if solo_on; then cat <<'EOF'
+Today your sandbox has TWO jobs: master AND minion. The master opens doors; the minion dials them.
+Run:
+  ss -tln | grep -E ':450[56]'
+  ss -tn | grep -E ':450[56]'
+The LISTEN lines are your master's doors, on 127.0.0.1 only: nobody outside can knock.
+In each ESTAB line: the first address:port is one end, the second the other end.
+Question: in the minion's line to :4505, what is the MINION's own port number?
+Answer:   /root/osas26/quest.sh answer R6 <number>
+EOF
+      else cat <<'EOF'
 Does your sandbox have an open door for Salt? And who dialled the two lines to HQ?
 Run:
   ss -tln | grep -E ':450[56]' || echo 'no Salt doors open on this machine'
@@ -169,8 +191,10 @@ In each line: YOUR address:port comes first, HQ's address:port second.
 Question: in the line that ends with :4505, what is YOUR side's port number?
 Answer:   /root/osas26/quest.sh answer R6 <number>
 EOF
+      fi
   ;;
-  R7) cat <<'EOF'
+  R7) solo_on && echo "Your own HQ: HQ below is YOUR master; its [HQ] message was the yellow [YOUR HQ] one."
+      cat <<'EOF'
 At Level 3, HQ sent your machine two kinds of orders. Your minion wrote each one in its diary.
 Run:
   grep 'Executing command' /var/log/venv-salt-minion.log | tail -n 4
@@ -195,6 +219,7 @@ EOF
   F2) cat <<'EOF'
 Your crew card lives on YOUR disk: /etc/motd.
 Its recipe (the state channel osas26-welcome) lives at HQ, in the folder /srv/susemanager/salt.
+(Your own HQ keeps its copy in /srv/salt/manager_org_1. The question is about the room's HQ.)
 Run:
   grep -A1 'mountPath: /srv/susemanager$' ~/uyuni.yaml
 Question: which HQ volume keeps the recipe?
@@ -210,6 +235,7 @@ Question: the last two pairs of HQ's fingerprint, as YOUR machine remembers it?
 (Then compare with HQ's ID card on the big screen.)
 Answer:   /root/osas26/quest.sh answer F3 <xx:xx>
 EOF
+      solo_on && echo "Your own HQ: HQ is YOUR master. Its ID card, as the master itself shows it: salt-key -f master.pub"
   ;;
   F4) cat <<'EOF'
 HQ knows your machine by two names. One you chose. One join.sh made fresh (step 2 of 4).
@@ -245,6 +271,7 @@ Run:
 Question: what is your org_id, the organisation number HQ gave you?
 Answer:   /root/osas26/quest.sh answer F7 <number>
 EOF
+      solo_on && echo "Your own HQ gives it from a file you can read: cat /srv/pillar/osas26.sls"
   ;;
   D1) cat <<'EOF'
 At Level 2 your sandbox knocks on HQ's door 4506.
@@ -323,6 +350,7 @@ EOF
 answer(){
   Q=$(printf '%s' "$1" | tr 'a-z' 'A-Z'); shift
   [ -n "$(meta "$Q")" ] || { echo "No quest called $Q. Type: /root/osas26/quest.sh"; exit 1; }
+  hq_only "$Q" && { echo "$Q $HQ_ONLY"; exit 0; }
   is_open "$Q" || { echo "$Q opens at $(meta "$Q" | cut -d'|' -f6)."; exit 0; }
   local a h live
   a=$(norm "$*"); h=$(hash_of "$a")
@@ -343,6 +371,9 @@ answer(){
       nope "Count the lines the command printed. Each line is one volume." ;;
   R3) case $h in
       349e23550518c2f065fa8618157efd4d324f782e95f72228ad3c0fd1a628d60d)
+        solo_on && win R3 "Right: 1-osas26-fleet. Uyuni reads this ticket: team osas26-fleet, and its rules." \
+               "Your own HQ is plain Salt: it ignores tickets. Anyone can TYPE a ticket anyway." \
+               "Who you are is your Salt key (the ID card), and YOU accepted it with salt-key -a. Try R4 next."
         win R3 "Right: 1-osas26-fleet. It told HQ: put me in team osas26-fleet, give me its rules." \
                "But anyone can TYPE a ticket. So the ticket says the team, not who you are." \
                "Who you are is your Salt key (the ID card). HQ had to accept THAT. Try R4 next." ;;
@@ -353,6 +384,9 @@ answer(){
       [ -n "$live" ] || nope "Your machine did not answer. Is the Salt bundle installed? (join.sh)"
       if [ "$(printf '%s' "$a" | tr -d ':')" = "$(printf '%s' "$live" | tr -d ':')" ]; then
         # the tail is public (made from the public key): the game compares it with the key HQ really accepted
+        solo_on && win R4 "Yes: $live. That code is made from your PUBLIC half (minion.pub). Safe to show anyone." \
+               "The secret half (minion.pem) never leaves this machine." \
+               "When YOU accepted it, your master saved exactly this code. See: salt-key -f $(tr -cd 'a-z0-9-' 2>/dev/null < "$ID_FILE")"
         [[ $live =~ ^[0-9a-f]{2}:[0-9a-f]{2}$ ]] && QFP=$live
         win R4 "Yes: $live. That code is made from your PUBLIC half (minion.pub). Safe to show anyone." \
                "The secret half (minion.pem) never leaves this machine." \
@@ -367,6 +401,9 @@ answer(){
   R6) live=$(ss -Htn state established '( dport = :4505 )' 2>/dev/null \
              | awk '{for(i=1;i<=NF;i++) if($i ~ /:[0-9]+$/){n=split($i,p,":"); print p[n]; break}}')
       [ -n "$live" ] || nope "No line to 4505 right now. Is your machine dark? (Level 4 runbook)"
+      for p in $live; do [ "$a" = "$p" ] && solo_on && win R6 "Yes: $p. The minion picked that random 'from' number when it DIALLED door 4505." \
+          "The caller picks a random number. The called side has the fixed door number." \
+          "Your master listens (on 127.0.0.1 only); your minion calls. With the room's HQ, a sandbox has no doors at all."; done
       for p in $live; do [ "$a" = "$p" ] && win R6 "Yes: $p. Your machine picked that random 'from' number when it DIALLED door 4505." \
           "The caller picks a random number. The called side has the fixed door number." \
           "No Salt door is open here. Your sandbox called out; HQ answers down that line."; done
@@ -391,6 +428,15 @@ answer(){
   F3) live=$(timeout 20 "$SALT" --local key.finger_master 2>/dev/null | first | awk -F: '{print $(NF-1)":"$NF}')
       [ -n "$live" ] || nope "No HQ key saved yet. Has HQ accepted your machine?"
       if [ "$(printf '%s' "$a" | tr -d ':')" = "$(printf '%s' "$live" | tr -d ':')" ]; then
+        if solo_on; then
+          own=$(timeout 20 "${SALT_KEY:-salt-key}" -f master.pub 2>/dev/null | sed -n 's/^master.pub: *//p' | awk -F: '{print $(NF-1)":"$NF}')
+          msg="Compare it with your master's own card: salt-key -f master.pub"
+          [ -n "$own" ] && { [ "$own" = "$live" ] && msg="Same as your own master's ID card (salt-key -f master.pub): your minion talks to YOUR master." \
+                                                || msg="Different from your master's own card! Call a helper: that is worth checking."; }
+          win F3 "Yes: $live. $msg" \
+                 "Your machine saved its master's public key the first time it connected: minion_master.pub." \
+                 "A fake master with another key would be refused: 'The master key has changed ... subverted'. Trust goes both ways."
+        fi
         hq=$(sed -n 's/^HQ_MASTER_FINGER_TAIL=//p' "$SERVER_ENV" 2>/dev/null)
         msg="Compare it with HQ's ID card on the big screen."
         [ -n "$hq" ] && { [ "$hq" = "$live" ] && msg="Same as HQ's real ID card: your machine talks to the real HQ." \
@@ -402,6 +448,9 @@ answer(){
       nope "Not the end of HQ's fingerprint as your machine stores it. Run key.finger_master again." ;;
   F4) live=$(timeout 20 "$SALT" --local grains.get machine_id 2>/dev/null | first | cut -c1-4)
       [ -n "$live" ] || nope "Your machine did not answer the grains question."
+      [ "$a" = "$live" ] && solo_on && win F4 "Yes. Uyuni files each machine's personal recipe list under that number: custom_<machine_id>." \
+          "Two sandboxes with the SAME machine-id would look like ONE machine to Uyuni." \
+          "That is why join.sh made a fresh one. Your neighbour's starts differently, right?"
       [ "$a" = "$live" ] && win F4 "Yes. HQ files your personal recipe list under that number: custom_<machine_id>." \
           "Two sandboxes with the SAME machine-id would look like ONE machine to HQ." \
           "That is why join.sh made a fresh one. Your neighbour's starts differently, right?"
@@ -421,7 +470,10 @@ answer(){
                "Runbook step 3, the port. The diary said it in plain words." ;;
       esac; nope "Read the ERROR lines again. Which word says what failed? (Your fault was: ${mode:-unknown})" ;;
   F7) live=$(timeout 25 "$SALT" pillar.get org_id 2>/dev/null | first)
-      if [ -n "$live" ]; then [ "$a" = "$live" ] && win F7 "Yes: org_id $live came DOWN from HQ, in pillar." \
+      if [ -n "$live" ]; then [ "$a" = "$live" ] && solo_on && win F7 "Yes: org_id $live came DOWN from your own HQ, in pillar (/srv/pillar/osas26.sls)." \
+          "Grains go UP (your machine tells its master: I am Ubuntu). Pillar comes DOWN (the master tells your machine)." \
+          "Pillar can hold secrets, so a master sends it only to the machine it belongs to. Uyuni does the same."
+        [ "$a" = "$live" ] && win F7 "Yes: org_id $live came DOWN from HQ, in pillar." \
           "Grains go UP (your machine tells HQ: I am Ubuntu). Pillar comes DOWN (HQ tells your machine: you are in org $live)." \
           "Pillar can hold secrets, so it is sent only to the machine it belongs to."
         nope "Not your org_id. Look under 'local:'."
@@ -480,6 +532,9 @@ check_d2(){
   local m s; m=$(stat -c %Y "$MOTD" 2>/dev/null || stat -f %m "$MOTD"); s=$(cat "$QD/D2.start")
   [ "$m" -ge "$s" ] || nope "Your card was not written again since you started. Do steps 1 to 3."
   grep -qF 'ORDER FROM HQ:' "$MOTD" || nope "Your card lost its ORDER line. Run step 3 again."
+  solo_on && win D2 "Repaired. Test mode showed 'Result: None': Salt told you the plan and changed nothing." \
+         "Then the state made the card true again. The second run changed nothing: that is a RULE, not a shout." \
+         "A hand edit survives only until the next state.apply. With the room's HQ, its promotions do it for everyone."
   win D2 "Repaired. Test mode showed 'Result: None': Salt told you the plan and changed nothing." \
          "Then the state made the card true again. The second run changed nothing: that is a RULE, not a shout." \
          "A hand edit survives only until the next highstate. HQ's promotions at 16:23 do the same for everyone."

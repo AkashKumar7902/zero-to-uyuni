@@ -10,11 +10,17 @@
 #                    THIS machine's own Level 1?
 #   incident         after Level 4: which fault, is the EFFECTIVE master right, is the port rule gone, is the minion up?
 #   replay           re-tell the game every fact that is true here now (crew.sh runs it when a crew links late)
+#   solo [--wait]    YOUR OWN HQ (solo.sh): did your own master accept this machine's key? --wait: wait for it (join.sh
+#                    starts this in the background, so the game hears it the moment you type salt-key -a)
+#   solo back        YOUR OWN HQ, after the fix (verify4.sh): wait until your master hears the minion again (test.ping)
 # Each prints one JSON object (replay prints nothing) and blueprint/lines/card also tell the game (game.sh rules).
+# With your own HQ, lines are not sent: the room's "who dialled whom" count is about the room's HQ.
 set -u
 D=$(dirname "$0")
 # shellcheck source=game.sh
 . "$D/game.sh"
+# shellcheck source=solo.sh
+. "$D/solo.sh"
 SALT=${SALT_CALL:-venv-salt-call}
 MOTD=${MOTD_FILE:-/etc/motd}
 BP=${BLUEPRINT:-/root/uyuni.yaml}
@@ -27,6 +33,8 @@ PKI=${MINION_PKI:-/etc/venv-salt-minion/pki/minion}
 ACH=${ACH_DIR:-/etc/osas26}
 QD=$ACH/quests
 WAIT_S=${PROBE_WAIT_S:-180}
+SOLO_WAIT_S=${PROBE_SOLO_WAIT_S:-1800}             # Level 2 to Level 3: plenty of time to type salt-key -a
+SOLO=""; solo_on && SOLO=1
 
 b(){ if "$@"; then echo true; else echo false; fi; }
 n_est(){ ss -Htn state established "( dport = :$1 )" 2>/dev/null | grep -c . ; }
@@ -74,10 +82,16 @@ replay(){
   case "$c" in D3|D2|N2) game_post l1.evidence "{\"sealed\":true,\"case\":\"$c\",\"replay\":true}" ;; esac
   id=$(tr -cd 'a-z0-9-' < "$ID_FILE" 2>/dev/null)
   [[ $id =~ ^osas26-[a-z0-9]{2,12}-[0-9a-f]{3}$ ]] \
-    && game_post l2.join "{\"minion_id\":\"$id\",\"port4506\":\"$(port4506)\",\"replay\":true}"
-  trusted_now && game_post l2.lines "$(with_replay "$(lines)")"
-  grep -qF 'ORDER FROM HQ: find out what happened' "$MOTD" 2>/dev/null && game_post l3.card "$(with_replay "$(card)")"
+    && game_post l2.join "{\"minion_id\":\"$id\",\"port4506\":\"$(port4506)\"${SOLO:+,\"hq\":\"solo\"},\"replay\":true}"
+  [ -z "$SOLO" ] && trusted_now && game_post l2.lines "$(with_replay "$(lines)")"
+  [ -n "$SOLO" ] && solo_accepted "$id" && game_post solo '{"step":"trusted","replay":true}'
+  [ -n "$SOLO" ] && [ -e "$ACH/solo.cmd" ] && game_post solo '{"step":"cmd","replay":true}'
+  if grep -qF 'ORDER FROM HQ: find out what happened' "$MOTD" 2>/dev/null; then
+    game_post l3.card "$(with_replay "$(card)")"
+    [ -n "$SOLO" ] && game_post solo '{"step":"orders","replay":true}'
+  fi
   if [ -e "$ACH/ach.doctor" ]; then game_post l4.fixed "$(with_replay "$(incident)")"
+    [ -n "$SOLO" ] && solo_ping "$id" 5 && game_post solo '{"step":"back","replay":true}'
   elif [ "$(break_mode)" != none ]; then game_post l4.break "{\"mode\":\"$(break_mode)\",\"replay\":true}"; fi
   for q in "$QD"/*.done; do
     [ -e "$q" ] || continue
@@ -99,12 +113,40 @@ wait_lines(){   # one waiter at a time; gives up quietly after WAIT_S seconds (a
   local j; j=$(lines); echo "$j"; game_post l2.lines "$j"
 }
 
+my_id(){ tr -cd 'a-z0-9-' 2>/dev/null < "$ID_FILE"; }
+solo_trust(){   # your own master's list says yes -> the game hears "your own HQ accepted your key" (once per run)
+  solo_on || return 0
+  if [ "${1:-}" = --wait ]; then
+    local lock=${PROBE_LOCK_DIR:-/tmp}/osas26-probe-solo.lock   # one waiter at a time
+    mkdir "$lock" 2>/dev/null || return 0
+    # shellcheck disable=SC2064  # the path is fixed now, on purpose
+    trap "rmdir '$lock' 2>/dev/null" EXIT
+    local waited=0
+    until solo_accepted "$(my_id)"; do         # the id is re-read: a second join.sh names a new machine
+      [ "$waited" -ge "$SOLO_WAIT_S" ] && return 0
+      sleep 3; waited=$((waited + 3))
+    done
+  else solo_accepted "$(my_id)" || return 0; fi
+  echo '{"step":"trusted"}'; game_post solo '{"step":"trusted"}'
+}
+solo_back(){    # after the fix: your own master asks "are you there?" until the minion answers (the restart takes ~10 s)
+  solo_on || return 0
+  local waited=0
+  until solo_ping "$(my_id)" 5; do
+    [ "$waited" -ge "${PROBE_BACK_WAIT_S:-120}" ] && return 0
+    sleep 3; waited=$((waited + 8))
+  done
+  echo '{"step":"back"}'; game_post solo '{"step":"back"}'
+}
+
 case "${1:-}" in
   blueprint) j=$(blueprint); echo "$j"; blueprint_ok && game_post l1.render "$j" ;;
-  lines)     if [ "${2:-}" = --wait ]; then wait_lines; else j=$(lines); echo "$j"; game_post l2.lines "$j"; fi ;;
+  lines)     if [ "${2:-}" = --wait ]; then [ -n "$SOLO" ] || wait_lines
+             else j=$(lines); echo "$j"; [ -n "$SOLO" ] || game_post l2.lines "$j"; fi ;;
   card)      j=$(card);      echo "$j"; game_post l3.card "$j" ;;
   incident)  incident; echo ;;                 # verify4.sh posts it together with its verdict
   replay)    replay ;;
-  *) echo "usage: probe.sh blueprint | lines [--wait] | card | incident | replay"; exit 1 ;;
+  solo)      if [ "${2:-}" = back ]; then solo_back; else solo_trust "${2:-}"; fi ;;
+  *) echo "usage: probe.sh blueprint | lines [--wait] | card | incident | replay | solo [--wait] | solo back"; exit 1 ;;
 esac
 exit 0

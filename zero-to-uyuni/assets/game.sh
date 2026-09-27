@@ -15,7 +15,7 @@
 GAME_ENV=${GAME_ENV:-/etc/osas26/game.env}          # written by crew.sh: GAME_URL, GAME_ROOM, GAME_CREW
 GAME_HDR=${GAME_HDR:-/etc/osas26/game.hdr}          # written by crew.sh: "Authorization: Bearer sb.<room>.<secret>"
 GAME_OUTBOX=${GAME_OUTBOX:-/etc/osas26/outbox}
-GAME_KINDS=' link l1.render l1.evidence l2.join l2.lines l3.card l4.break l4.fixed l4.restart_trap quest replay '
+GAME_KINDS=' link l1.render l1.evidence l2.join l2.lines l3.card l4.break l4.fixed l4.restart_trap quest replay solo '
 GAME_MAX_AGE=7200                                   # the server drops older outbox events anyway (SPEC §5.9)
 
 _game_load() {
@@ -36,7 +36,8 @@ _game_send() {
 # Only fixed-shape JSON leaves the sandbox: known keys, and values that are numbers, booleans or short words made of
 # letters, digits and : . _ - (ids, modes, fingerprint tails). A sentence someone typed can never pass this, even if a
 # future script tried to send one.
-GAME_KEYS=' pvcs source sealed case minion_id port4506 out4505 out4506 listen order box_matches_machine mode master_ok port_rule minion_active id tier fp replay '
+# hq: "solo" on l2.join = this sandbox runs its own HQ (solo.sh); step: what YOUR OWN HQ just did (kind solo)
+GAME_KEYS=' pvcs source sealed case minion_id port4506 out4505 out4506 listen order box_matches_machine mode master_ok port_rule minion_active id tier fp replay hq step '
 _game_safe() {
   local re='^\{("[a-z0-9_]+":("[A-Za-z0-9:._-]{1,40}"|[0-9]{1,4}|true|false),?)*\}$' k
   [[ $1 =~ $re ]] && [ "${1: -2:1}" != , ] || return 1

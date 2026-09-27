@@ -12,6 +12,22 @@ Read the 4 steps it prints. Then look at the projector: your crew's hut calls HQ
 
 Press **CHECK** when the banner says YOUR SYSTEM.
 
+### Your banner says YOUR OWN HQ?
+
+join.sh knocks on the room's HQ first. No answer? Then **this sandbox runs its own HQ**: a real Salt master, right here.
+Same Salt, same lessons. You are its admin, so one job is yours: **accept the key**.
+
+1. Your master's key list. Your minion waits under *Unaccepted Keys*:
+`salt-key -L`{{exec}}
+2. Check the ID card before you trust it. The two fingerprints must match:
+`salt-key -f "$(cat /etc/osas26-id)"; venv-salt-call --local key.finger`{{exec}}
+3. Say yes (type **y**):
+`salt-key -a "$(cat /etc/osas26-id)"`{{exec}}
+4. Your master asks, your minion answers **True**. Not yet? Give it up to 20 seconds, then ask again:
+`salt "$(cat /etc/osas26-id)" test.ping`{{exec}}
+
+Press **CHECK**. On the big screen your hut lights up with dotted lines: your own HQ saw it.
+
 <details><summary>Waiting for the room? Side quests (optional, never ranked)</summary>
 
 Your answers stay in your sandbox. Start with `/root/osas26/quest.sh`{{exec}}, then `/root/osas26/quest.sh show R3`{{exec}}.
