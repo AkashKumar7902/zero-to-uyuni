@@ -112,7 +112,8 @@ jobs:
         run: |
           end=$(( $(date +%s) + HOLD * 60 ))
           while [ "$(date +%s)" -lt "$end" ] && ! sudo test -e /root/osas26/STOP; do
-            printf '%s minion=%s pub_conns=%s req_conns=%s card=%s\n' "$(date -u +%T)" "$(systemctl is-active venv-salt-minion)" \
+            printf '%s minion=%s hq=%s pub_conns=%s req_conns=%s card=%s\n' "$(date -u +%T)" "$(systemctl is-active venv-salt-minion)" \
+              "$(cat /etc/osas26-mode 2>/dev/null)" \
               "$(ss -Htn state established '( dport = :4505 )' | wc -l)" "$(ss -Htn state established '( dport = :4506 )' | wc -l)" \
               "$(sudo grep -q 'GEEKO CORP' /etc/motd 2>/dev/null && echo yes || echo no)"
             sleep 60
@@ -126,7 +127,8 @@ jobs:
         run: |
           mkdir -p ev; cp -f join.log preinstall.log ev/ 2>/dev/null || true
           sudo cp /var/log/venv-salt-minion.log ev/ 2>/dev/null || sudo sh -c 'cp /var/log/salt/minion '"$PWD"'/ev/minion.log' 2>/dev/null || true
-          sudo cp /run/osas26-relay/events.log ev/relay-events.log 2>/dev/null || true; sudo chmod -R a+r ev
+          sudo cp /run/osas26-relay/events.log ev/relay-events.log 2>/dev/null || true
+          sudo cp /tmp/osas26-hqwatch.log ev/hqwatch-switch.log 2>/dev/null || true; sudo chmod -R a+r ev
       - uses: actions/upload-artifact@v4
         if: always()
         with: {name: "sandbox-${{ inputs.mode }}-evidence", path: ev, retention-days: 14, if-no-files-found: ignore}
