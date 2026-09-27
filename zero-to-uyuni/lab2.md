@@ -1,21 +1,20 @@
 # Level 2 · Onboarding: join the fleet
 
-HQ opens its doors when the **countdown on the projector** ends.
+Today **your sandbox runs its own HQ**: a real Salt master, right here, next to your machine.
+Same Salt, same lessons, and you are its admin.
 
+Wait for the **countdown on the projector**. At zero, run the join command.
 Use your **crew name** from your game page (2-12 letters or numbers, not your full name; one crew name per pair: it belongs to both of you):
 `/root/osas26/join.sh`{{exec}}
 
-Read the 4 steps it prints. Then look at the projector: your crew's hut calls HQ, and its windows light up when HQ accepts your machine's Salt key.
+Read the 4 steps it prints.
 
 **Find your line** (Akash will ask):
 `cat /etc/venv-salt-minion/minion.d/osas26.conf`{{exec}}
 
-Press **CHECK** when the banner says YOUR SYSTEM.
+### Your banner says YOUR OWN HQ? Good: that's today's plan
 
-### Your banner says YOUR OWN HQ?
-
-join.sh knocks on the room's HQ first. No answer? Then **this sandbox runs its own HQ**: a real Salt master, right here.
-Same Salt, same lessons. You are its admin, so one job is yours: **accept the key**.
+Your minion is waiting for its master. You are the admin, so one job is yours: **accept the key**.
 
 1. Your master's key list. Your minion waits under *Unaccepted Keys*:
 `salt-key -L`{{exec}}
@@ -28,12 +27,22 @@ Same Salt, same lessons. You are its admin, so one job is yours: **accept the ke
 
 Press **CHECK**. On the big screen your hut lights up with dotted lines: your own HQ saw it.
 
+<details><summary>Sitting at the HQ table (the front table)? Your steps are here.</summary>
+
+Your sandbox joins Uyuni, the HQ on the projector. At zero:
+`/root/osas26/join.sh --hq`{{exec}}
+Your banner says YOUR SYSTEM. Uyuni says yes by itself: your crew's hut calls HQ, and its windows light up when HQ accepts your machine's Salt key.
+Press **CHECK** when the banner says YOUR SYSTEM.
+Nothing on the big screen after 3 minutes? Ask a helper, or give your sandbox its own HQ (about 30 seconds): `/root/osas26/join.sh --solo`{{exec}}
+Then follow the 4 steps above.
+</details>
+
 <details><summary>Waiting for the room? Side quests (optional, never ranked)</summary>
 
 Your answers stay in your sandbox. Start with `/root/osas26/quest.sh`{{exec}}, then `/root/osas26/quest.sh show R3`{{exec}}.
-- **R3 · Your team ticket** · **R4 · Your ID card** · **R5 · The knock log** · **R6 · No doors here**
-- **F3 · Trust goes both ways** (compare with HQ's ID card on the big screen) · **F4 · Your name at HQ**
-- **D3 · Two files, one truth** · **D5 · Ticket 104: already fixed?**
+- **R3 · Your team ticket** · **R4 · Your ID card** · **R5 · The knock log** · **R6 · Two jobs, one machine**
+- **F3 · Trust goes both ways** (your machine checks its master's ID card too) · **F4 · Your name at HQ**
+- **D5 · Ticket 104: already fixed?** · **D3 · Two files, one truth** (at the HQ table: it reads a file only Uyuni writes)
 
 Helping a neighbour counts more than any quest.
 </details>

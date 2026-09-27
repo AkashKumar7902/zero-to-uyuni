@@ -1,6 +1,6 @@
 {
   "title": "oSAS26 · Geeko Corp: your first SRE shift (Uyuni)",
-  "description": "Read the real Uyuni Helm chart, join a live Uyuni fleet, take orders from HQ, survive an incident drill and crack a real case.",
+  "description": "Read the real Uyuni Helm chart, run your own Salt master, send it orders, survive an incident drill and crack a real case.",
   "details": {
     "intro":  { "text": "intro.md", "background": "preinstall.sh", "foreground": "wait.sh" },
     "steps": [

@@ -2,7 +2,7 @@
 # usage: leap16-minion.sh <hostname> <FQDN> <SERVER_IP> [register]
 # PLAN §5.9, with the three fixes from the laptop dress rehearsal (2026-09-27):
 #  R1 machine-id: `rm /etc/machine-id; systemd-machine-id-setup` on a RUNNING system prints "Reusing machine ID stored
-#     in /run/machine-id" and writes the SAME id back (measured), so two Nanodes cloned from one image would keep one id
+#     in /run/machine-id" and writes the SAME id back (measured), so two leap machines cloned from one image would keep one id
 #     and leap-b's registration would update leap-a. Write a fresh random id instead (as join.sh does).
 #  R2 minion id: Uyuni's bootstrap script writes `hostname -f` into minion_id. With a DHCP search domain it is
 #     "leap-b.<domain>" (measured: leap-b.akash.test), which the game (^leap-[ab]$), fleet-sync's fingerprint tail,
@@ -10,7 +10,7 @@
 #  R3 exit status: the last line `[ "$4" = register ] && ...` returned 1 when not registering; now an if.
 set -euo pipefail; H=$1 FQDN=$2 IP=$3
 hostnamectl set-hostname "$H"
-# Both Nanodes come from one provider image; never trust its machine-id, or leap-b's registration hits
+# leap-a and leap-b come from one image (v7: containers on the runner); never trust its machine-id, or leap-b's registration hits
 # "Case 1.2 ... update the existing system" and overwrites leap-a on stage [L20].
 [ -f /etc/osas26-mid-reset ] || { rm -f /etc/machine-id; tr -d '-' </proc/sys/kernel/random/uuid > /etc/machine-id
   [ -d /var/lib/dbus ] && ln -sf /etc/machine-id /var/lib/dbus/machine-id; touch /etc/osas26-mid-reset; }

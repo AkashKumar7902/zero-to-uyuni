@@ -42,7 +42,7 @@ Is the database gone? Or is something else going on?
 2. The manual's list: **printed inside your crew card** (online: [Uyuni docs · Kubernetes guide · Storage](https://www.uyuni-project.org/uyuni-docs/en/uyuni/specialized-guides/kubernetes-guide/server-kubernetes-deployment.html#_storage), ≈ 1.5 MB).
 3. Found a difference? Seal it with the name from **HQ's blueprint**: `/root/osas26/claim.sh <name>`
    You get **EVIDENCE CONFIRMED** at once. Then fill the **CASE FILE** box on your crew card.
-   (No laptop in your crew? Your game page can seal it too, in the CASE tab.)
+   (Your game page can seal it too, in the CASE tab: on a phone or a laptop, for anyone in your crew.)
 
 Shh! Don't tell other tables. Stick your **FOUND IT** sticky **inside** your crew card. The verdict comes at the final case.
 

@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # credits.sh [BUGS_FOUND] - end credits for the shift (Quest's credits.sh in the Geeko Corp skin). READ-ONLY toward Uyuni/Salt.
-# Crew = accepted attendee keys (nickname part only, alphabetical, de-duplicated): keys stay accepted after the
-# sandboxes expire, so this works at 16:34. Extra lines (helpers WITH consent, organizers, and the twist's credits
+# The game's credits roll every crew name; this is their terminal twin. v7: the room runs its own HQs (SOLO), so HQ's
+# keys are only the HQ table's; naming those alone would make the table a tier. So THE CREW is "everyone in Room 4"
+# by default, and HQ's counts (joined, sealed) stay off. CREW_NAMES=hq lists HQ's accepted attendee keys instead
+# (nickname part only, alphabetical, de-duplicated), for a room that joined HQ as a whole: keys stay accepted after
+# the sandboxes expire, so it works at 16:34. Extra lines (helpers WITH consent, organizers, and the twist's credits
 # line, which must never sit in this public file): $D/credits-extra.txt.
 # DOORPRIZE: cards are handed out in number order at the door, so the numbers in use are 1..N. N comes from $D/raffle-n
 # (written off-projector in the admin session) or RAFFLE_N; 0 = no draw. Luck, not merit; seats without a laptop win
@@ -14,9 +17,12 @@ k(){ kubectl --kubeconfig=$ADM -n uyuni exec deploy/uyuni -c uyuni -- "$@"; }
 if [ "${BOARD_FAKE:-}" = 1 ]; then k(){ cat "$D/fake-keys.json"; }; fi
 bugs=${1:-1}
 raffle=${RAFFLE_N:-$(cat "$D/raffle-n" 2>/dev/null || echo 0)}
-names=$(k salt-key --out=json 2>/dev/null | jq -r '.minions[]' 2>/dev/null | grep -E "$RX" | cut -d- -f2 | sort -u)
+accepted=$(k salt-key --out=json 2>/dev/null | jq -r '.minions[]' 2>/dev/null)
+names=$(printf '%s\n' "$accepted" | grep -E "$RX" | cut -d- -f2 | sort -u)
 n=$(printf '%s\n' "$names" | grep -c . || true)
 ev=$(cat "$D/evidence-count" 2>/dev/null || echo 0)
+leaps=$(printf '%s\n' "$accepted" | grep -cE '^leap-[ab]$' || true)            # the office servers ran (v7: containers)
+[ "${CREW_NAMES:-room}" = hq ] || { n=0; ev=0; }                                 # v7: never the HQ table alone
 W=${COLUMNS:-$(tput cols 2>/dev/null || echo 80)}
 delay=0.35; [ "$n" -gt 40 ] && delay=0.2; [ "$n" -gt 70 ] && delay=0.12; [ "${FAST:-}" = 1 ] && delay=0.08
 line(){ printf '%*s\n' $(( (W + ${#1}) / 2 )) "$1"; sleep "$delay"; }
@@ -43,7 +49,9 @@ line ""; line ""
 if [ -s "$D/credits-extra.txt" ]; then
   while IFS= read -r x; do line "$x"; done < "$D/credits-extra.txt"; line ""; line ""; fi
 line "HQ BUILT WITH"
-line "openSUSE Leap 16  ·  RKE2  ·  Helm  ·  Salt  ·  Uyuni 2026.08"
+line "Uyuni 2026.08  ·  RKE2  ·  Helm  ·  Salt"
+line "on a free GitHub runner"
+[ "$leaps" -gt 0 ] && line "+ openSUSE Leap 16 office servers"
 line "Geeko Corp is not real, and not a SUSE or openSUSE product."
 line "Uyuni and the server are real."   # the twist's own credits line lives in golden's credits-extra.txt (not public)
 line ""; line ""

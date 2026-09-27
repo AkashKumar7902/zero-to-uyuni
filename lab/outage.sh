@@ -38,7 +38,7 @@ pct=$(( (200 * down + total) / (2 * total) )); bar=""   # rounded half up, as th
 for ((i = 1; i <= 30; i++)); do if (( i * 100 <= pct * 30 )); then bar+="#"; else bar+="."; fi; done
 printf '\n  OUTAGE HP [%s] %d%%   (%d of %d crew nodes still dark)\n\n' "$bar" "$pct" "$down" "$total"
 if (( down <= win )); then
-  printf '  ==================================================\n   O U T A G E   D E F E A T E D !   Mantap, crew!\n   The whole room brought HQ'"'"'s fleet back.\n  ==================================================\n\n'
+  printf '  ==================================================\n   O U T A G E   D E F E A T E D !   Mantap, crew!\n   The crews brought HQ'"'"'s fleet back.\n  ==================================================\n\n'
   echo "OUTAGE DEFEATED by the whole crew" > "$D/room-status"
 else
   echo "OUTAGE HP ${pct}%: runbook on the screen" > "$D/room-status"

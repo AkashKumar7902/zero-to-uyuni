@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Level 2 CHECK: join.sh ran. Passes even if port 4506 is blocked (never gate on the infrastructure; AMBER-E puzzle).
+# Level 2 CHECK: join.sh ran. Passes even if port 4506 is blocked (never gate on the infrastructure).
 # In the background (never holding CHECK): once HQ trusts this machine, count the lines it dialled (LD-7).
 # YOUR OWN HQ (solo.sh): accepting the key is YOUR job today, so CHECK waits for your own master's yes (salt-key -a),
 # and then tells the game "your own HQ accepted your key".

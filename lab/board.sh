@@ -3,7 +3,7 @@
 # READ-ONLY toward Uyuni/Salt: salt-key --out=json, spacecmd group_listsystems (cached 30 s), local files only
 # (ach.log from the listener, evidence-count from evidence.sh, room-status from outage.sh), systemctl is-active ("doors").
 # Names ALPHABETICAL, never by score. The SHIFT XP bar was pre-cut in the v3 review (BOARD_XP=1 would show it; needs the listener).
-# Counts only for evidence and the outage.
+# Counts only for evidence and the outage. v7: HQ's keys are the HQ table's and leap-b's; the game is the room's board.
 set -uo pipefail
 ADM=/etc/rancher/rke2/rke2.yaml; D=${BOARD_DIR:-/root/osas26}; C=$D/.registered; L=$D/ach.log
 k(){ kubectl --kubeconfig=$ADM -n uyuni exec deploy/uyuni -c uyuni -- "$@"; }
@@ -34,7 +34,7 @@ k salt-key --out=json 2>/dev/null | jq -r '.minions[]' | grep -E '^osas26-[a-z0-
     for (b = 0; b < 40; b++) bar = bar (b < pct * 40 / 100 ? "#" : "-")
     if (tag != "") print tag
     printf "GEEKO CORP FLEET BOARD   doors: %-6s   crew on shift: %d (registered %s)\n", doors, NR, r
-    if (showxp == 1) printf "SHIFT XP [%s] %d%%  (whole room)\n", bar, pct
+    if (showxp == 1) printf "SHIFT XP [%s] %d%%  (the HQ table)\n", bar, pct
     printf "final case evidence: %s%s\n\n", ev, (ev ~ /^[0-9]+$/ ? " crew nodes sealed it (count only)" : "")
     for (i = 1; i <= NR; i++) printf "%-19s%s", cell[i], (i % 4 == 0 ? "\n" : "")
     if (NR % 4) print ""

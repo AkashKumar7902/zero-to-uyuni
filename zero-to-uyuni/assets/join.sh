@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# join.sh [--solo|--hq] [nickname] — make THIS SANDBOX a Salt client (a minion) of an HQ: the room's HQ (the oSAS26
-# Uyuni server), or YOUR OWN HQ, a real Salt master inside this sandbox (solo.sh).
+# join.sh [--solo|--hq] [nickname] — make THIS SANDBOX a Salt client (a minion) of an HQ: YOUR OWN HQ, a real Salt
+# master inside this sandbox (solo.sh), or Uyuni HQ (the oSAS26 Uyuni server on the projector).
 # NEVER run on your own computer: a Salt master can run any command as root on its minions.
-# Which HQ: the room's HQ when it answers on door 4506 within HQ_WAIT seconds (6). If it does not, this sandbox runs
-# its own HQ: same Salt, same lessons, and you are its admin. MODE=solo or MODE=hq in server.env (one git push on the
-# day), or --solo / --hq here, decides instead.
+# Which HQ: MODE in server.env decides. v7 pins MODE=solo: every sandbox runs its own HQ (same Salt, same lessons, and
+# you are its admin). --solo / --hq here beats it for one sandbox (--hq: the HQ table, up to 8 crews on Uyuni).
+# With no MODE (auto): Uyuni HQ when it answers on door 4506 within HQ_WAIT seconds (6), else your own HQ.
 # It prints its 4 steps, so it teaches as it runs. If the sandbox is linked to the game (crew.sh), it also tells the
 # game which machine is yours; the game is never needed for joining.
 set -euo pipefail
@@ -34,15 +34,15 @@ nick=$(printf '%s' "$nick" | tr 'A-Z' 'a-z'); [[ "$nick" =~ ^[a-z0-9]{2,12}$ ]] 
 ENVF=$(game_server_env)
 FQDN=$(sed -n 's/^FQDN=//p' "$ENVF"); IP=$(sed -n 's/^SERVER_IP=//p' "$ENVF"); KEY=$(sed -n 's/^KEY=//p' "$ENVF")
 [ -n "$want" ] || case "$(sed -n 's/^MODE=//p' "$ENVF" | head -1 | tr -cd 'a-z')" in solo) want=solo ;; hq) want=hq ;; esac
-if [ -z "$want" ]; then                               # auto: does the room's HQ answer on its Salt door?
+if [ -z "$want" ]; then                               # auto: does Uyuni HQ answer on its Salt door?
   W=${HQ_WAIT:-6}
   if [[ $IP =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]]; then   # (no address in server.env yet = no HQ to knock on)
-    echo "Knocking on the room's HQ (door 4506, up to ${W} s)..."
+    echo "Knocking on Uyuni HQ (door 4506, up to ${W} s)..."
     # Salt's door speaks first: ZeroMQ's greeting starts with the byte 0xff. So an open port with nothing alive behind
     # it (a relay whose HQ is gone) does not count as an answer; only a real Salt master does.
     timeout "$W" bash -c "exec 3<>/dev/tcp/${IP}/4506 && head -c 1 <&3" 2>/dev/null | od -An -tx1 | grep -q ff && want=hq
   fi
-  [ -n "$want" ] || { want=solo; printf "\n  The room's HQ did not answer."; }
+  [ -n "$want" ] || { want=solo; printf "\n  Uyuni HQ did not answer."; }
 fi
 old_fqdn=$(cat "$R/etc/osas26-fqdn" 2>/dev/null || true)
 if [ "$want" = solo ]; then
@@ -51,7 +51,7 @@ if [ "$want" = solo ]; then
   FQDN=$SOLO_FQDN; IP=127.0.0.1
   echo "[0/4] your own HQ: a Salt master in this sandbox (it listens on 127.0.0.1 only)"
   $SUDO bash "${SOLO_SH:-$D/solo.sh}" up || exit 1
-elif solo_on; then                                     # back to the room's HQ: your own master can rest
+elif solo_on; then                                     # back to Uyuni HQ: your own master can rest
   $SUDO bash "${SOLO_SH:-$D/solo.sh}" down || true
 fi
 ID="osas26-${nick}-$(od -An -N2 -tx1 /dev/urandom | tr -d ' \n' | cut -c1-3)"
@@ -73,7 +73,7 @@ enable_legacy_startup_events: False
 enable_fqdns_grains: False
 log_level_logfile: info
 EOF
-# a NEW master (your own HQ, or back to the room's) has a new key: the minion must forget the old one, or it refuses
+# a NEW master (your own HQ, or back to Uyuni HQ) has a new key: the minion must forget the old one, or it refuses
 # to talk ("The master key has changed")
 if [ -n "$old_fqdn" ] && [ "$old_fqdn" != "$FQDN" ]; then $SUDO rm -f "$R/etc/venv-salt-minion/pki/minion/minion_master.pub"; fi
 echo "[4/4] start the minion, check the Salt port"

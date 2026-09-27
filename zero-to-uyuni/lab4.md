@@ -1,6 +1,7 @@
 # Level 4 · Incident drill
 
 Wait for **Go** on the projector. Then: `/root/osas26/break.sh`{{exec}} (the pager goes off).
+break.sh cuts your minion off from its HQ: your own master (at the HQ table: Uyuni).
 
 Find out what broke, in this order (the runbook):
 
@@ -25,18 +26,18 @@ Fix it by hand:
 
 When the speaker says **"fix.sh allowed"**, `/root/osas26/fix.sh`{{exec}} is fine too: real SREs use runbooks.
 
-Press **CHECK**, then wait for **Promotions** and run `cat /etc/motd`{{exec}}
-
-**Your own HQ?** The same drill and the same runbook: break.sh cuts your minion off from YOUR master.
+**Is it back?** After step 5, ask your master (the minion needs about 10 seconds): `salt "$(cat /etc/osas26-id)" test.ping`{{exec}}
 While door 4506 is blocked, your own `salt` commands wait too: they use the same door.
-After step 5, ask your master (the minion needs about 10 seconds): `salt "$(cat /etc/osas26-id)" test.ping`{{exec}}
-Promotions come from you: `salt "$(cat /etc/osas26-id)" state.apply manager_org_1.osas26-welcome`{{exec}} then `cat /etc/motd`{{exec}}
+
+Press **CHECK**. When the projector says **Promotions**, they come from you: `salt "$(cat /etc/osas26-id)" state.apply manager_org_1.osas26-welcome`{{exec}} then `cat /etc/motd`{{exec}}
+
+(At the HQ table, Uyuni sends them: press **CHECK**, wait for **Promotions**, then `cat /etc/motd`{{exec}})
 
 <details><summary>Your machine is back? Side quests (optional, never ranked)</summary>
 
 - **F6 · The diary's own words**: which word in your minion's log named the fault?
 - **X1 · The other fault**: read the real diary of the fault you did NOT get. Which runbook step finds it?
-- **D3 · Two files, one truth**: why the runbook asks `config.get`, not one file.
+- **D3 · Two files, one truth** (at the HQ table): why the runbook asks `config.get`, not one file.
 - Or: Case 2 (below), or help a neighbour: that counts most.
 
 `/root/osas26/quest.sh`{{exec}}

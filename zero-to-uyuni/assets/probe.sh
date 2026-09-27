@@ -14,7 +14,7 @@
 #                    starts this in the background, so the game hears it the moment you type salt-key -a)
 #   solo back        YOUR OWN HQ, after the fix (verify4.sh): wait until your master hears the minion again (test.ping)
 # Each prints one JSON object (replay prints nothing) and blueprint/lines/card also tell the game (game.sh rules).
-# With your own HQ, lines are not sent: the room's "who dialled whom" count is about the room's HQ.
+# With your own HQ, lines are not sent: the room's "who dialled whom" count is about Uyuni HQ.
 set -u
 D=$(dirname "$0")
 # shellcheck source=game.sh

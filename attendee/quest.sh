@@ -12,7 +12,7 @@
 # pillar or loads HQ (the heaviest is one state.apply of one SLS). Quests open by LOCAL facts, so they work offline.
 # Every command and expected output was verified with real Salt 3006.9 and a real render of server-helm 2026.8.0.
 # YOUR OWN HQ (solo.sh): every quest works against your own master too, with its own words where the story differs
-# (R3 R4 R5 R6 R7 F2 F3 F4 F7 D2). D3 and D4 read files only Uyuni writes, so they wait for the room's HQ.
+# (R3 R4 R5 R6 R7 F2 F3 F4 F7 D2). D3 and D4 read files only Uyuni writes, so they are for the HQ table.
 set -u
 trap '' PIPE        # piped into head or grep, a solve still counts: output may be cut, the rest of the script runs
 D=$(dirname "$0")
@@ -49,7 +49,7 @@ healthy(){ local m; m=$(timeout 20 "$SALT" --local config.get master 2>/dev/null
            && ! iptables -C OUTPUT -p tcp --dport 4506 -j REJECT 2>/dev/null; }
 fixed(){ broke && { test -e "$ACH/ach.doctor" || healthy; }; }
 org(){ local o; o=$(timeout 25 "$SALT" pillar.get org_id 2>/dev/null | first); case $o in ''|*[!0-9]*) echo 1 ;; *) echo "$o" ;; esac; }
-central(){ ! solo_on; }                                   # the room's HQ (Uyuni), not your own
+central(){ ! solo_on; }                                   # Uyuni HQ (the HQ table), not your own
 fault_mode(){ local m; m=$(tr -cd 'a-z' < "$BREAK_FILE" 2>/dev/null); case "$m" in dns|port) echo "$m" ;; esac; }
 # Quest X1's captured diaries (real Salt 3006.9, geeko-hq ideation/learning-design/verification/salt-lab-transcript.md
 # §3). Replace them with the G3 captures from a real Killercoda sandbox joined to HQ when those exist.
@@ -82,7 +82,7 @@ X1|deep|4|The other fault|fixed|Level 4, after your fix'
 meta(){ printf '%s\n' "$QUESTS" | awk -F'|' -v id="$1" 'toupper($1)==toupper(id)'; }
 is_open(){ local needs f; needs=$(meta "$1" | cut -d'|' -f5); for f in $needs; do "$f" || return 1; done; }
 hq_only(){ solo_on && meta "$1" | cut -d'|' -f5 | grep -qw central; }   # a quest about what only Uyuni writes
-HQ_ONLY="needs the room's HQ: only Uyuni writes what it reads. Every other quest works with your own HQ."
+HQ_ONLY="is for the HQ table: only Uyuni writes what it reads. Every other quest works with your own HQ."
 title_of(){ if [ "$1" = R6 ] && solo_on; then echo "Two jobs, one machine"; else meta "$1" | cut -d'|' -f4; fi; }
 QFP=""                                             # R4 only: the PUBLIC fingerprint tail (xx:xx), for HQ's cross-check
 # The first solve tells the game {id, tier[, public fp]} (≤ 4 s); the [game] line prints only if the game took it.
@@ -101,7 +101,7 @@ list(){
     printf '%s\n' "$QUESTS" | while IFS='|' read -r id t mins title needs where; do
       [ "$t" = "$tier" ] || continue
       if [ -e "$QD/$id.done" ]; then st="${G}solved${N}"
-      elif hq_only "$id"; then st="needs the room's HQ"
+      elif hq_only "$id"; then st="for the HQ table"
       elif is_open "$id"; then st="${Y}open${N}  ->  quest.sh show $id"
       else st="opens at $where"; fi
       [ "$id" = R6 ] && title=$(title_of R6)
@@ -219,7 +219,7 @@ EOF
   F2) cat <<'EOF'
 Your crew card lives on YOUR disk: /etc/motd.
 Its recipe (the state channel osas26-welcome) lives at HQ, in the folder /srv/susemanager/salt.
-(Your own HQ keeps its copy in /srv/salt/manager_org_1. The question is about the room's HQ.)
+(Your own HQ keeps its copy in /srv/salt/manager_org_1. The question is about Uyuni HQ.)
 Run:
   grep -A1 'mountPath: /srv/susemanager$' ~/uyuni.yaml
 Question: which HQ volume keeps the recipe?
@@ -403,7 +403,7 @@ answer(){
       [ -n "$live" ] || nope "No line to 4505 right now. Is your machine dark? (Level 4 runbook)"
       for p in $live; do [ "$a" = "$p" ] && solo_on && win R6 "Yes: $p. The minion picked that random 'from' number when it DIALLED door 4505." \
           "The caller picks a random number. The called side has the fixed door number." \
-          "Your master listens (on 127.0.0.1 only); your minion calls. With the room's HQ, a sandbox has no doors at all."; done
+          "Your master listens (on 127.0.0.1 only); your minion calls. With Uyuni HQ, a sandbox has no doors at all."; done
       for p in $live; do [ "$a" = "$p" ] && win R6 "Yes: $p. Your machine picked that random 'from' number when it DIALLED door 4505." \
           "The caller picks a random number. The called side has the fixed door number." \
           "No Salt door is open here. Your sandbox called out; HQ answers down that line."; done
@@ -534,7 +534,7 @@ check_d2(){
   grep -qF 'ORDER FROM HQ:' "$MOTD" || nope "Your card lost its ORDER line. Run step 3 again."
   solo_on && win D2 "Repaired. Test mode showed 'Result: None': Salt told you the plan and changed nothing." \
          "Then the state made the card true again. The second run changed nothing: that is a RULE, not a shout." \
-         "A hand edit survives only until the next state.apply. With the room's HQ, its promotions do it for everyone."
+         "A hand edit survives only until the next state.apply. On Uyuni HQ, its promotions do it for every machine."
   win D2 "Repaired. Test mode showed 'Result: None': Salt told you the plan and changed nothing." \
          "Then the state made the card true again. The second run changed nothing: that is a RULE, not a shout." \
          "A hand edit survives only until the next highstate. HQ's promotions at 16:23 do the same for everyone."

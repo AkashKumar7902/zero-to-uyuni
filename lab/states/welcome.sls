@@ -37,7 +37,7 @@ osas26_motd:
         ------------------------------------------------------------
          ORDER FROM HQ: {{ order }}
         ------------------------------------------------------------
-         {{ mid }} | Uyuni 2026.08 on RKE2 + openSUSE Leap 16
+         {{ mid }} | Uyuni 2026.08 + RKE2, free GitHub runner
          openSUSE.Asia Summit 2026, Yogyakarta
 osas26_card:
   file.managed:

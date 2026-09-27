@@ -2,7 +2,7 @@
 # hq-say.sh welcome|promo - HQ (Uyuni) prints one message into every terminal of THIS sandbox.
 # Uyuni runs it as a Salt remote command (as root). Read it: it only prints text.
 # YOUR OWN HQ (solo.sh): your own master runs it the same way (salt <your id> cmd.run '/root/osas26/hq-say.sh welcome'),
-# and then it tells the game "your own HQ ran a remote command" (the room's HQ is heard by its own listener instead).
+# and then it tells the game "your own HQ ran a remote command" (Uyuni HQ is heard by its own listener instead).
 [ -f "${SANDBOX_FLAG:-/etc/osas26-sandbox}" ] || exit 0
 D=$(dirname "$0")
 # shellcheck source=game.sh

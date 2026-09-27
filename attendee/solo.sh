@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# solo.sh up|down|status - YOUR OWN HQ: a real Salt master inside THIS sandbox. join.sh starts it when the room's HQ
-# does not answer on door 4506 (or with MODE=solo in server.env, or join.sh --solo). Your minion talks to it on
-# 127.0.0.1, and nothing outside this sandbox can reach it. You are its admin: you accept keys (salt-key -a), you
-# send the orders (salt ... state.apply, salt ... cmd.run). Same Salt, same lessons as the room's HQ.
+# solo.sh up|down|status - YOUR OWN HQ: a real Salt master inside THIS sandbox. join.sh starts it with MODE=solo in
+# server.env (v7: the whole room), with join.sh --solo, or when Uyuni HQ does not answer on door 4506 (auto).
+# Your minion talks to it on 127.0.0.1, and nothing outside this sandbox can reach it. You are its admin: you accept
+# keys (salt-key -a), you send the orders (salt ... state.apply, salt ... cmd.run). Same Salt, same lessons as HQ.
 # SOURCE it for the helpers the other scripts use (solo_on, solo_accepted, solo_ping, SOLO_FQDN); RUN it for up/down.
 #
 # Where the master comes from (measured on 27 Sep 2026 in a clean Ubuntu 24.04 container; kit/test/solo-e2e.sh):
@@ -15,7 +15,7 @@
 #     sha256-checked (the pins below match the GPG-signed Release -> Packages chain of packages.broadcom.com, key
 #     10857FFDD3F91EAE577A21D664CBBC8173D76B3F). 27.1 MB to download, 231 MB on disk.
 SOLO_FQDN=${SOLO_FQDN:-my-hq.osas26.test}           # your own HQ's name (.test never resolves outside, RFC 6761)
-MODE_FILE=${MODE_FILE:-/etc/osas26-mode}             # join.sh writes it: "hq" (the room's HQ) or "solo" (your own)
+MODE_FILE=${MODE_FILE:-/etc/osas26-mode}             # join.sh writes it: "hq" (Uyuni HQ) or "solo" (your own)
 
 solo_on() { [ "$(tr -cd 'a-z' 2>/dev/null < "$MODE_FILE")" = solo ]; }
 SOLO_PKI=${SOLO_PKI:-/etc/salt/pki/master}           # your master's key folders: minions_pre/ (waiting), minions/ (yes)
@@ -86,7 +86,7 @@ osas26_motd:
         ------------------------------------------------------------
          ORDER FROM HQ: {{ order }}
         ------------------------------------------------------------
-         {{ mid }} | Uyuni 2026.08 on RKE2 + openSUSE Leap 16
+         {{ mid }} | Uyuni 2026.08 + RKE2, free GitHub runner
          openSUSE.Asia Summit 2026, Yogyakarta
 osas26_card:
   file.managed:
@@ -100,7 +100,7 @@ card_solo() {
   printf '%s\n' "{#- YOUR OWN HQ's copy of HQ's crew card (solo.sh wrote it). Level 3: change the text of \"order\" below," \
                 "    then apply it: salt \"\$(cat /etc/osas26-id)\" state.apply manager_org_1.osas26-welcome #}"
   card_golden | sed -e 's/Onboarded   Uyuni manages this machine now/Onboarded   your own HQ manages this machine now/' \
-                    -e 's/| Uyuni 2026.08 on RKE2 + openSUSE Leap 16/| your own HQ: Salt 3006 in this sandbox/'
+                    -e 's/| Uyuni 2026.08 + RKE2, free GitHub runner/| your own HQ: Salt 3006 in this sandbox/'
 }
 
 write_config() {
