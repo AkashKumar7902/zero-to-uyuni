@@ -67,6 +67,7 @@ else
   done
 fi
 # --- ssh stays key-only
+[ -d /run/sshd ] || install -d -m 0755 /run/sshd                  # socket-activated sshd: absent while idle
 ST=$(sshd -T 2>/dev/null)   # captured: `sshd -T | grep -q` under pipefail fails on SIGPIPE
 grep -qx 'passwordauthentication no' <<<"$ST" && grep -qx 'kbdinteractiveauthentication no' <<<"$ST" \
   && grep -qxE 'permitrootlogin (prohibit-password|without-password)' <<<"$ST" && ok "sshd key-only (ports $(awk '$1=="port"{print $2}' <<<"$ST" | tr '\n' ' '))" || bad "sshd is NOT key-only"

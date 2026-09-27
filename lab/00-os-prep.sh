@@ -94,6 +94,7 @@ if systemctl is-enabled --quiet ssh.socket 2>/dev/null || systemctl is-active --
 elif systemctl is-active --quiet sshd; then systemctl reload sshd
 else systemctl reload ssh; fi
 # capture first: under pipefail, `sshd -T | grep -q` fails whenever grep exits early and sshd gets SIGPIPE
+install -d -m 0755 /run/sshd                                     # the socket restart stopped ssh.service, which removes it
 ST=$(sshd -T)
 grep -qx 'passwordauthentication no' <<<"$ST" && grep -qx 'kbdinteractiveauthentication no' <<<"$ST" \
   && grep -qxE 'permitrootlogin (prohibit-password|without-password)' <<<"$ST" \
