@@ -14,7 +14,8 @@ T="inet osas26_guard"
 START=${SALT_WINDOW_START:-2026-10-03 06:25:00 UTC}   # 13:25 WIB = the osas26-salt-open.timer
 END=${SALT_WINDOW_END:-2026-10-03 10:30:00 UTC}       # 17:30 WIB = the osas26-salt-close.timer
 LIST=/etc/osas26/lab-ok.list
-log(){ echo "$*"; logger -t osas26-salt-window -- "$*" 2>/dev/null || true; }
+# under systemd (the timers, the guard's ExecStartPost) stdout already goes to the journal: log once, not twice
+log(){ echo "$*"; [ -n "${INVOCATION_ID:-}" ] || logger -t osas26-salt-window -- "$*" 2>/dev/null || true; }
 guard(){ nft list table $T >/dev/null 2>&1; }
 isopen(){ nft list set $T salt_ok 2>/dev/null | grep -q '0\.0\.0\.0/0'; }
 ipok(){ [[ $1 =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}(/[0-9]{1,2})?$ ]] || { echo "not an IPv4 address: $1" >&2; exit 2; }; }
@@ -29,7 +30,7 @@ case "${1:-status}" in
     if [ -n "${2:-}" ]; then
       [[ $2 =~ ^[0-9]+$ ]] && [ "$2" -ge 1 ] && [ "$2" -le 600 ] || { echo "MIN must be 1-600" >&2; exit 2; }
       cancel
-      systemd-run --quiet --collect --unit=osas26-salt-autoclose --on-active="${2}min" \
+      systemd-run --quiet --collect --unit=osas26-salt-autoclose --on-active="${2}min" --timer-property=AccuracySec=1s \
         /usr/local/sbin/osas26-salt-window close
       log "Salt window OPEN for $2 min (auto-close at $(date -u -d "+$2 min" +%H:%M) UTC)"
     else
@@ -61,7 +62,8 @@ case "${1:-status}" in
     if guard; then echo "guard:  present (table $T; public interface $(nft list chain $T pre | sed -n 's/.*iifname != "\([^"]*\)".*/\1/p' | head -1))"
     else echo "guard:  ABSENT (80/443 may be public!)"; exit 1; fi
     if isopen; then
-      ac=$(systemctl list-timers --all --no-pager osas26-salt-autoclose.timer 2>/dev/null | awk 'NR==2 && $1 != "-" {print $1" "$2" "$3" "$4}')
+      ac=""; if systemctl is-active --quiet osas26-salt-autoclose.timer; then
+        ac=$(systemctl list-timers --no-pager osas26-salt-autoclose.timer 2>/dev/null | awk 'NR==2 {print $1" "$2" "$3" "$4}'); fi
       echo "window: OPEN${ac:+ (auto-close $ac)}"
     else echo "window: CLOSED"; fi
     echo "lab_ok: $(nft list set $T lab_ok 2>/dev/null | sed -n 's/.*elements = { \(.*\) }.*/\1/p')"
