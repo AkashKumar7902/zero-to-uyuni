@@ -75,6 +75,9 @@ enable_legacy_startup_events: False
 enable_fqdns_grains: False
 log_level_logfile: info
 EOF
+# LD-1: once Uyuni has registered this machine it keeps its own copy (minion.d/susemanager.conf), and the file read
+# last wins. So every master: line must name the HQ chosen now, or the minion keeps calling the old one.
+for f in $(grep -l '^master:' "$R/etc/venv-salt-minion/minion.d/"*.conf 2>/dev/null); do $SUDO sed -i "s/^master: .*/master: ${FQDN}/" "$f"; done
 # a NEW master (your own HQ, or back to Uyuni HQ) has a new key: the minion must forget the old one, or it refuses
 # to talk ("The master key has changed")
 if [ -n "$old_fqdn" ] && [ "$old_fqdn" != "$FQDN" ]; then $SUDO rm -f "$R/etc/venv-salt-minion/pki/minion/minion_master.pub"; fi
