@@ -2,7 +2,9 @@
 # 4506) and SSH on a public TCP relay that needs no account (bore.pub). No web port is ever relayed: the Web UI is an
 # SSH tunnel. Start it from the GitHub app (Actions > hq > Run workflow) or from a terminal:
 #   gh workflow run hq.yml -R AkashKumar7902/zero-to-uyuni -f hours=5 -f game=off
-# The SSH door is in the job summary within ~3 min; the Salt doors and server.env when the build is done (~20-40 min).
+# The doors are printed in the live log of the "relay" steps (the GitHub app shows it while the job runs) and saved as
+# the artifact "doors" (relay.env) at once; server.env (artifact "server-env") when the build is done (~20-40 min):
+#   gh run download <run id> -R AkashKumar7902/zero-to-uyuni -n doors     (works while the job is running)
 # Stop early (the logs are still uploaded): ssh -p <SSH_PORT> root@bore.pub touch /root/osas26/runner/STOP
 # Secrets (all optional): GEEKO_HQ_DEPLOY_KEY (read-only deploy key of geeko-hq, for the golden hooks) and
 # GOLDEN_TOKEN (game=on only). Nothing secret is ever echoed; the artifacts are checked for secret values.
@@ -61,6 +63,10 @@ jobs:
             echo '```'
             echo "ssh -i ~/.ssh/osas26_ed25519 -p $SSH_PORT root@$RELAY_SERVER      # host key $SSH_HOSTKEY"
             echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: publish the doors as an artifact now (readable while the job runs; the job summary appears only at the end)
+        run: mkdir -p doors && sudo cat /root/osas26/relay.env > doors/relay.env
+      - uses: actions/upload-artifact@v4
+        with: {name: doors, path: doors/relay.env, retention-days: 3, overwrite: true}
       - name: build HQ from zero (lab/build.sh, RUNNER=1)
         timeout-minutes: 150
         env: {CAP: "${{ inputs.cap }}"}
@@ -79,6 +85,9 @@ jobs:
             echo; echo "server.env (the artifact **server-env**):"; echo '```'; cat out/server.env; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with: {name: server-env, path: out/server.env, retention-days: 3}
+      - run: sudo cat /root/osas26/relay.env > doors/relay.env
+      - uses: actions/upload-artifact@v4
+        with: {name: doors, path: doors/relay.env, retention-days: 3, overwrite: true}
       - name: geeko-hq's golden hooks (sparse checkout)
         if: env.HAS_HOOKS_KEY == 'true'
         uses: actions/checkout@v4

@@ -62,7 +62,7 @@ probe(){ local d p; read -r _ _ _ kind <<<"$(door "$1")"; p=$(cat "$RUN/$1.port"
   d=$(probe_raw "$RELAY_SERVER" "$p" "$kind") || return 1; echo "$d"; }
 
 tunnel(){
-  local name=$1 lhost lport want kind st n=0 busy_since=0 back=2 l p last
+  local name=$1 lhost lport want kind st n=0 busy_since=0 back=2 l p last hold fb
   read -r lhost lport want kind <<<"$(door "$name")"; st=$RUN/$name; install -d -m 0755 "$RUN"
   [ -s "$st.port" ] && want=$(cat "$st.port")            # sticky: a restarted loop asks for the port it had
   while :; do
@@ -78,8 +78,9 @@ tunnel(){
     if grep -q 'port already in use' <<<"$last"; then
       [ "$busy_since" = 0 ] && busy_since=$(date +%s)
       ev "$name: remote port $want is BUSY on $RELAY_SERVER ($(( $(date +%s) - busy_since )) s so far; a dropped client's port frees when the relay notices)"
-      if [ "$FALLBACK" = 1 ] && [ $(( $(date +%s) - busy_since )) -ge "$PORT_HOLD" ]; then
-        ev "$name: FALLBACK after ${PORT_HOLD} s: any free port (server.env must then carry the new port: D-K2)"; want=0; rm -f "$st.port"; fi
+      hold=$PORT_HOLD; fb=$FALLBACK; [ "$name" = ssh ] && { hold=${SSH_HOLD:-60}; fb=1; }   # ssh: any port will do
+      if [ "$fb" = 1 ] && [ $(( $(date +%s) - busy_since )) -ge "$hold" ]; then
+        ev "$name: FALLBACK after ${hold} s: any free port$([ "$name" = ssh ] || echo ' (server.env must then carry the new port: D-K2)')"; want=0; rm -f "$st.port"; fi
       sleep 5; continue
     fi
     busy_since=0
