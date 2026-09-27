@@ -71,6 +71,10 @@ jobs:
           sudo bash lab/runner/relay.sh install && sudo bash lab/runner/relay.sh up ssh
           p=$(sudo sed -n 's/^SSH_PORT=//p' /root/osas26/relay.env); hk=$(sudo sed -n 's/^SSH_HOSTKEY=//p' /root/osas26/relay.env)
           echo "### sandbox SSH: \`ssh -i ~/.ssh/osas26_ed25519 -p $p root@bore.pub\` (host key $hk)" >> "$GITHUB_STEP_SUMMARY"
+          echo "sandbox SSH door: bore.pub:$p (host key $hk)"
+          mkdir -p sdoors && sudo cat /root/osas26/relay.env > sdoors/relay.env
+      - uses: actions/upload-artifact@v4
+        with: {name: "sandbox-${{ inputs.mode }}-doors", path: sdoors/relay.env, retention-days: 3}
       - name: single - preinstall.sh + join.sh, as the Killercoda scenario runs them
         if: inputs.mode == 'single'
         env: {NICK: "${{ inputs.nick }}"}
