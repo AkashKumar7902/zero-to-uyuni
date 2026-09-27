@@ -34,6 +34,7 @@ Your sandbox joins Uyuni, the HQ on the projector. At zero:
 Your banner says YOUR SYSTEM. Uyuni says yes by itself: your crew's hut calls HQ, and its windows light up when HQ accepts your machine's Salt key.
 Press **CHECK** when the banner says YOUR SYSTEM.
 Nothing on the big screen after 3 minutes? Ask a helper, or give your sandbox its own HQ (about 30 seconds): `/root/osas26/join.sh --solo`{{exec}}
+If Uyuni HQ says no or goes quiet, your sandbox does this by itself, with a yellow note in the terminal.
 Then follow the 4 steps above.
 </details>
 

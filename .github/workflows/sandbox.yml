@@ -4,6 +4,9 @@
 #                is in the job summary, so the break/fix drill can be driven from outside
 #   mode=load    lab/load-test.sh: N synthetic sandboxes (containers from lab/loadtest/Containerfile) join, hold, and
 #                an optional outage storm (every minion down for 90 s at minute STORM)
+#   mode=hqwatch lab/loadtest/hqwatch-e2e.sh: the HQ table's safety net (attendee/hqwatch.sh) with real Salt against a
+#                stand-in HQ master on this runner (no HQ run needed, no door opened): HQ says yes, goes quiet, says
+#                no, never says yes; and MODE=solo runs no watcher
 # server.env comes from the HQ run's artifact "server-env" (hq_run = its run id) or, if empty, from main.
 #   gh workflow run sandbox.yml -R AkashKumar7902/zero-to-uyuni -f hq_run=<id> -f mode=single -f nick=gha1
 # Stop early: ssh -p <port> root@bore.pub touch /root/osas26/STOP
@@ -14,7 +17,7 @@ on:
       hq_run: {description: "run id of the hq workflow whose server.env to use (empty = attendee/server.env on main)", default: "", required: false}
       mode:
         type: choice
-        options: [single, load]
+        options: [single, load, hqwatch]
         default: single
       nick: {description: "single: the crew name (2-12, a-z 0-9)", default: "gha", required: true}
       n: {description: "load: sandboxes on this runner (1-40)", default: "30", required: true}
@@ -43,6 +46,7 @@ jobs:
           echo "RELAY_HOST=$(sed -n 's/^RELAY=//p' se/server.env)" >> "$GITHUB_ENV"
           echo "HQ_IP=$(sed -n 's/^SERVER_IP=//p' se/server.env)" >> "$GITHUB_ENV"
       - name: facts and the path to HQ's doors
+        if: inputs.mode != 'hqwatch'
         run: |
           if grep -qx 'RELAY=cloudflare-quick' se/server.env; then   # the sandbox side of the relay (kit change D-K3)
             sudo install -d -m 0755 /root/osas26 && sudo cp se/server.env /root/osas26/server.env
@@ -67,6 +71,7 @@ jobs:
           done
           ping -c 5 -q "$HQ_IP" | tail -1 || true
       - name: the sandbox's own SSH door (key-only; to drive the drill from outside)
+        if: inputs.mode != 'hqwatch'
         run: |
           sudo install -d -m 0755 /etc/osas26 /run/sshd /etc/ssh/sshd_config.d
           printf 'PasswordAuthentication no\nKbdInteractiveAuthentication no\nPermitRootLogin prohibit-password\n' | sudo tee /etc/ssh/sshd_config.d/00-osas26.conf >/dev/null
@@ -79,7 +84,17 @@ jobs:
           echo "sandbox SSH door: bore.pub:$p (host key $hk)"
           mkdir -p sdoors && sudo cat /root/osas26/relay.env > sdoors/relay.env
       - uses: actions/upload-artifact@v4
+        if: inputs.mode != 'hqwatch'
         with: {name: "sandbox-${{ inputs.mode }}-doors", path: sdoors/relay.env, retention-days: 3}
+      - name: hqwatch - the HQ table's safety net with real Salt (a stand-in HQ master on 127.0.0.2)
+        if: inputs.mode == 'hqwatch'
+        run: |
+          sudo install -d -m 0755 /root/osas26
+          sudo cp zero-to-uyuni/assets/* /root/osas26/ && sudo sh -c 'chmod +x /root/osas26/*.sh'
+          t0=$(date +%s); sudo bash /root/osas26/preinstall.sh 2>&1 | tee preinstall.log >/dev/null; echo "preinstall.sh: $(( $(date +%s) - t0 )) s"
+          rc=0; sudo bash lab/loadtest/hqwatch-e2e.sh || rc=$?
+          mkdir -p ev && sudo sh -c 'cp /tmp/hqwatch-e2e.* ev/ 2>/dev/null; cp /var/log/osas26-hq-standin*.log ev/ 2>/dev/null' || true
+          exit $rc
       - name: single - preinstall.sh + join.sh, as the Killercoda scenario runs them
         if: inputs.mode == 'single'
         env: {NICK: "${{ inputs.nick }}"}

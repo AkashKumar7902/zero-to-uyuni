@@ -4,6 +4,8 @@
 # NEVER run on your own computer: a Salt master can run any command as root on its minions.
 # Which HQ: MODE in server.env decides. v7 pins MODE=solo: every sandbox runs its own HQ (same Salt, same lessons, and
 # you are its admin). --solo / --hq here beats it for one sandbox (--hq: the HQ table, up to 8 crews on Uyuni).
+# On Uyuni HQ, hqwatch.sh keeps an eye on the line: if HQ says no, has not said yes after 10 minutes, or goes quiet,
+# it gives this sandbox its own HQ by itself (join.sh --solo), with a note in the terminal.
 # With no MODE (auto): Uyuni HQ when it answers on door 4506 within HQ_WAIT seconds (6), else your own HQ.
 # It prints its 4 steps, so it teaches as it runs. If the sandbox is linked to the game (crew.sh), it also tells the
 # game which machine is yours; the game is never needed for joining.
@@ -95,5 +97,9 @@ fi
 printf '\n  ==========================================\n   YOUR SYSTEM:  %s\n   %s\n   Now look at the projector.\n  ==========================================\n\n' "$ID" "$P"
 if game_post_sync l2.join "{\"minion_id\":\"$ID\",\"port4506\":\"$port\"}"; then
   printf '\033[1;36m[game] Crew %s is linked to %s. Look at the big screen.\033[0m\n\n' "$GAME_CREW" "$ID"
+fi
+if [ "${HQWATCH:-1}" != 0 ]; then                    # the HQ table's safety net (never on your own HQ)
+  game_detach bash "$D/hqwatch.sh" "$ID" "$IP" "$nick"
+  echo "  If Uyuni HQ says no or goes quiet, this sandbox gets YOUR OWN HQ by itself, with a note right here."
 fi
 exit 0
