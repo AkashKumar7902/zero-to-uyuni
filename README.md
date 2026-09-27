@@ -96,7 +96,7 @@ tmux attach -t build                               # detach: Ctrl-b d. The build
 
 The whole build took **15 min 37 s** unattended on a 6 vCPU / 16 GB VM (about half of it downloads).
 `FROM=30 bash lab/build.sh` resumes at a step. Every step appends `phase<TAB>time` to `/root/osas26/timings.tsv`;
-[`docs/timings.md`](docs/timings.md) has measured numbers. When something breaks: [`docs/troubleshooting.md`](docs/troubleshooting.md).
+[`docs/timings.md`](docs/timings.md) has measured numbers; [`docs/runner-hq.md`](docs/runner-hq.md) runs HQ on a GitHub runner. When something breaks: [`docs/troubleshooting.md`](docs/troubleshooting.md).
 
 **The web UI, through a tunnel** (from your own machine; the admin password is in `/root/osas26/secrets.env`):
 
@@ -137,7 +137,7 @@ attendee/       the sandbox kit: preinstall.sh join.sh catchup.sh break.sh fix.s
                 crew.sh game.sh probe.sh quest.sh server.env uyuni.yaml.prerendered manual.adoc.saved
 zero-to-uyuni/  the Killercoda scenario (at the repo root, so it stays a scenario): index.json intro.md wait.sh
                 lab1..4.md verify1..4.sh finish.md preinstall.sh assets/ (copies of attendee/*: `make killercoda`)
-docs/           troubleshooting.md timings.md cases.md
+docs/           troubleshooting.md timings.md cases.md runner-hq.md
 ```
 
 `attendee/server.env` says where HQ lives; `join.sh` fetches it from `main` at run time, so moving HQ is one push.
