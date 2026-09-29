@@ -12,7 +12,7 @@ Find out what broke, in this order (the runbook):
 2 · DNS: can your machine turn that name into a number?
 `getent hosts "$(venv-salt-call --local config.get master | sed -n 2p | tr -d ' ')" || echo "NO DNS"`{{exec}}
 
-3 · port: can it reach HQ's door 4506?
+3 · port: can it reach its HQ's door 4506? (your own HQ: 127.0.0.1)
 `timeout 3 bash -c "</dev/tcp/$(cat /etc/osas26-fqdn)/4506" && echo OPEN || echo BLOCKED`{{exec}}
 
 4 · log: what did the minion write in its diary?

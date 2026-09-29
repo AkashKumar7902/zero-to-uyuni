@@ -11,6 +11,7 @@ Read the 4 steps it prints.
 
 **Find your line** (Akash will ask):
 `cat /etc/venv-salt-minion/minion.d/osas26.conf`{{exec}}
+`activation_key` is read only by Uyuni: at the front table it puts your machine in team osas26-fleet. Your own master ignores it.
 
 ### Your banner says YOUR OWN HQ? Good: that's today's plan
 
@@ -24,14 +25,15 @@ Your minion is waiting for its master. You are the admin, so one job is yours: *
 `salt-key -a "$(cat /etc/osas26-id)"`{{exec}}
 4. Your master asks, your minion answers **True**. Not yet? Give it up to 20 seconds, then ask again:
 `salt "$(cat /etc/osas26-id)" test.ping`{{exec}}
+(Why up to 20 s? A waiting minion knocks again every 10 seconds: side quest R5.)
 
-Press **CHECK**. On the big screen your hut lights up with dotted lines: your own HQ saw it.
+Press **CHECK**. On the big screen your hut lights up, with no line to HQ: your own master trusts it.
 
 <details><summary>Sitting at the HQ table (the front table)? Your steps are here.</summary>
 
 Your sandbox joins Uyuni, the HQ on the projector. At zero:
 `/root/osas26/join.sh --hq`{{exec}}
-Your banner says YOUR SYSTEM. Uyuni says yes by itself: your crew's hut calls HQ, and its windows light up when HQ accepts your machine's Salt key.
+Your banner says YOUR SYSTEM. HQ's accept script says yes to osas26- names: your crew's hut gets a ring and a line to HQ when HQ accepts your machine's Salt key.
 Press **CHECK** when the banner says YOUR SYSTEM.
 Nothing on the big screen after 3 minutes? Ask a helper, or give your sandbox its own HQ (about 30 seconds): `/root/osas26/join.sh --solo`{{exec}}
 If Uyuni HQ says no or goes quiet, your sandbox does this by itself, with a yellow note in the terminal.

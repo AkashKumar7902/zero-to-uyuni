@@ -14,7 +14,7 @@ Never pull down to refresh on a phone.
 
 **While your kit loads: read the crew words, then wait for the speaker.**
 **Uyuni** is free, open-source software that manages many Linux machines from one place. **HQ** is our Uyuni server.
-- **minion** (client): a machine HQ manages. Soon: this sandbox. *(Level 2)*
+- **minion** (client): a machine a Salt master manages. Soon: this sandbox, with its own master. *(Level 2)*
 - **Salt**: how HQ gives orders. HQ is the Salt master. *(Level 2)*
 - **activation key**: a class code. It says which team your machine joins. *(Level 2)*
 - **Salt key + fingerprint**: your machine's ID card, and a short code to check it. *(Level 2)*
