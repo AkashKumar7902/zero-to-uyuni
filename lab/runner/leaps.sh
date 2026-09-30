@@ -34,18 +34,20 @@ prep(){
     DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 -qq install -y podman >/dev/null; }
   local B; B=$(mktemp -d)
   # shims: in a container, podman owns /etc/hostname (hostnamectl set-hostname to the SAME name is a no-op here) and
-  # timedatectl may have no bus: leap16-minion.sh (the rehearsal-proven client script) runs unchanged
+  # timedatectl may have no bus: leap16-minion.sh (the rehearsal-proven client script) runs unchanged. Leap 16.0 has no
+  # uptime binary at all, and Meet HQ's 15:38 command is `whoami; uptime` @ leap-*: uptime = w's first line (30 Sep)
   cat > "$B/Containerfile" <<EOF
 FROM $BASE
 RUN zypper -n --gpg-auto-import-keys ref >/dev/null && \\
     zypper -n --gpg-auto-import-keys in --no-recommends systemd dbus-broker openssh-server openssh-clients \\
-      curl iproute2 hostname gawk tar gzip util-linux ca-certificates >/dev/null && \\
+      curl iproute2 hostname gawk tar gzip util-linux ca-certificates procps >/dev/null && \\
     zypper -n ar -f $CT_REPO uyuni-client-tools && \\
     zypper -n --gpg-auto-import-keys in --no-recommends venv-salt-minion >/dev/null && \\
     zypper -n clean -a >/dev/null && systemctl enable sshd && : > /etc/machine-id && \\
     printf '#!/bin/sh\\n[ "\$1" = set-hostname ] && [ "\$2" = "\$(hostname)" ] && exit 0\\nexec /usr/bin/hostnamectl "\$@"\\n' > /usr/local/sbin/hostnamectl && \\
     printf '#!/bin/sh\\n/usr/bin/timedatectl "\$@" 2>/dev/null || date -u\\n' > /usr/local/sbin/timedatectl && \\
-    chmod 0755 /usr/local/sbin/hostnamectl /usr/local/sbin/timedatectl
+    printf '#!/bin/sh\\n# Leap 16.0 ships no uptime (procps 4): the same line is the first line of w\\nw | head -n 1\\n' > /usr/local/bin/uptime && \\
+    chmod 0755 /usr/local/sbin/hostnamectl /usr/local/sbin/timedatectl /usr/local/bin/uptime
 CMD ["/usr/lib/systemd/systemd"]
 EOF
   say "podman $(podman --version | awk '{print $3}'): building the Leap 16.0 image"
