@@ -1,6 +1,6 @@
 # Makefile - two helpers for the repo (PLAN §5.0). Nothing here touches a server.
 #   make killercoda   copy attendee/* into the scenario (Killercoda reads files from the scenario directory [L13])
-#   make check        offline checks: bash -n, shellcheck, index.json, the scenario copies, server.env
+#   make check        offline checks: bash -n, shellcheck, lab/test (CNI), index.json, the scenario copies, server.env
 SHELL := /bin/bash
 SCEN  := zero-to-uyuni
 ASSET_FILES := $(wildcard attendee/*.sh) attendee/server.env attendee/uyuni.yaml.prerendered attendee/manual.adoc.saved
@@ -16,8 +16,9 @@ killercoda:
 	@echo "scenario assets refreshed from attendee/"
 
 check: killercoda
-	@for f in lab/*.sh lab/runner/*.sh clients/*.sh attendee/*.sh $(SCEN)/*.sh; do bash -n "$$f" || exit 1; done; echo "bash -n: ok"
-	@shellcheck -S warning -x lab/*.sh lab/runner/*.sh clients/*.sh attendee/*.sh $(SCEN)/*.sh && echo "shellcheck (warnings): ok"
+	@for f in lab/*.sh lab/runner/*.sh lab/test/*.sh clients/*.sh attendee/*.sh $(SCEN)/*.sh; do bash -n "$$f" || exit 1; done; echo "bash -n: ok"
+	@shellcheck -S warning -x lab/*.sh lab/runner/*.sh lab/test/*.sh clients/*.sh attendee/*.sh $(SCEN)/*.sh && echo "shellcheck (warnings): ok"
+	@bash lab/test/cni.test.sh
 	@python3 -m json.tool $(SCEN)/index.json >/dev/null && echo "index.json: valid"
 	@git diff --quiet -- $(SCEN) || { echo "the scenario copies changed: commit them"; git status --short -- $(SCEN); }
 	@bash lab/lint-server-env.sh attendee/server.env

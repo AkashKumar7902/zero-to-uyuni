@@ -64,6 +64,10 @@ unmanaged-devices=interface-name:flannel*;interface-name:cali*;interface-name:tu
 EOF
   systemctl reload NetworkManager
 else echo "NetworkManager not active (netplan/networkd or wicked): no CNI exclusion needed"; fi
+# Canal must be the only CNI config in /etc/cni/net.d BEFORE RKE2's first start (a runner ships podman's bridge config;
+# lib.sh cni_quarantine has the 30 Sep story). podman itself uses netavark here, which never reads /etc/cni/net.d.
+if systemctl is-active --quiet rke2-server; then echo "CNI: rke2-server already runs: /etc/cni/net.d left as it is"
+else cni_quarantine; fi
 
 # --- 3. nothing else may own the ports (a stray nginx or salt-master) [ASSETS §b #3, #8] ---
 if ! systemctl is-active --quiet rke2-server; then
