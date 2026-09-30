@@ -55,7 +55,8 @@ for _ in 1 2 3; do
   strays=$(kubectl get pods -A -o json 2>/dev/null | cni_strays 10.42.) || strays=""
   [ -n "$strays" ] || break
   echo "CNI: pods outside Canal's 10.42.0.0/16, re-created now:"; echo "$strays" | sed 's/^/  /'
-  echo "$strays" | while read -r ns pod _; do kubectl -n "$ns" delete pod "$pod" --wait=false; done
+  # a pod that is already gone (or goes while we look) is not an error: under set -e a failed delete would end the build
+  echo "$strays" | while read -r ns pod _; do kubectl -n "$ns" delete pod "$pod" --wait=false --ignore-not-found || true; done
   sleep 10
 done
 cfg=(/etc/cni/net.d/*); echo "CNI: ${cfg[*]##*/} · every running pod on 10.42.0.0/16 (or the host network)"
