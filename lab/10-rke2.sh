@@ -47,6 +47,19 @@ systemctl enable --now rke2-server                               # blocks until 
 for b in kubectl crictl ctr; do ln -sf "/var/lib/rancher/rke2/bin/$b" "/usr/local/bin/$b"; done
 for _ in $(seq 120); do kubectl get --raw=/readyz >/dev/null 2>&1 && break; sleep 5; done
 kubectl wait node --all --for=condition=Ready --timeout=10m
+# Canal first: wait for its config, then re-create any pod a foreign CNI config wired before it (lib.sh cni_quarantine
+# has the 30 Sep story: CoreDNS on 10.88.0.5 left HQ without cluster DNS). A Deployment re-creates a deleted pod on Canal.
+for _ in $(seq 120); do [ -s /etc/cni/net.d/10-canal.conflist ] && break; sleep 5; done
+[ -s /etc/cni/net.d/10-canal.conflist ] || die "Canal wrote no /etc/cni/net.d/10-canal.conflist in 10 min"
+for _ in 1 2 3; do
+  strays=$(kubectl get pods -A -o json 2>/dev/null | cni_strays 10.42.) || strays=""
+  [ -n "$strays" ] || break
+  echo "CNI: pods outside Canal's 10.42.0.0/16, re-created now:"; echo "$strays" | sed 's/^/  /'
+  # a pod that is already gone (or goes while we look) is not an error: under set -e a failed delete would end the build
+  echo "$strays" | while read -r ns pod _; do kubectl -n "$ns" delete pod "$pod" --wait=false --ignore-not-found || true; done
+  sleep 10
+done
+cfg=(/etc/cni/net.d/*); echo "CNI: ${cfg[*]##*/} · every running pod on 10.42.0.0/16 (or the host network)"
 rke2 --version | head -1 > rke2-version.txt; cat rke2-version.txt
 if [ "$OS" = leap16 ]; then
   # `ps -eZ` prints only the comm name "rke2", so grepping it for "rke2 server" never matches [R3]
@@ -72,4 +85,8 @@ iptables -t nat -S | grep -E -- '--dport (4505|4506)' || die "no Salt DNAT rules
 np=$(kubectl get svc -A --no-headers | grep -c NodePort || true)
 [ "$np" = 0 ] || { kubectl get svc -A | grep NodePort; die "$np NodePort service(s): G-FW requires 0"; }
 echo "services with a NodePort: 0"
+# cluster DNS before the addons and Uyuni: without it 30-uyuni waits 45 min for a database it cannot name
+for _ in $(seq 60); do kubectl -n kube-system get deploy/rke2-coredns-rke2-coredns >/dev/null 2>&1 && break; sleep 5; done
+kubectl -n kube-system wait deploy/rke2-coredns-rke2-coredns --for=condition=Available --timeout=5m \
+  || die "CoreDNS is not ready (kubectl -n kube-system get pods -o wide: an address outside 10.42.0.0/16 means a foreign CNI config)"
 t rke2_door
