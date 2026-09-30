@@ -92,7 +92,7 @@ if [ "$want" = solo ]; then
   printf '\n  ==========================================\n   YOUR SYSTEM:  %s\n   YOUR OWN HQ:  %s (this sandbox)\n   %s\n' "$ID" "$FQDN" "$P"
   printf '   Your master waits for YOUR yes: salt-key -a %s\n  ==========================================\n\n' "$ID"
   if game_post_sync l2.join "{\"minion_id\":\"$ID\",\"port4506\":\"$port\",\"hq\":\"solo\"}"; then
-    printf '\033[1;36m[game] Crew %s is linked to %s. Your own HQ: your hut lights up on the big screen, with no line to HQ.\033[0m\n\n' "$GAME_CREW" "$ID"
+    printf '\033[1;36m[game] Crew %s is linked to %s. Your own HQ: after your salt-key -a, your tile on the big screen says own HQ.\033[0m\n\n' "$GAME_CREW" "$ID"
   fi
   game_detach bash "$D/probe.sh" solo --wait          # the moment YOU accept the key, the game hears it
   exit 0

@@ -31,7 +31,7 @@ When the message says so, open your crew card (the card HQ writes on your machin
 
 Does Uyuni know whether you finished Level 1? Look at your card.
 
-Your crew's hut never lit up on the big screen? Ask a helper, then `touch /tmp/osas26-skip3`{{exec}} and watch with your neighbour.
+Your crew's tile never said **on Uyuni** on the big screen? Ask a helper, then `touch /tmp/osas26-skip3`{{exec}} and watch with your neighbour.
 
 Press **CHECK**.
 </details>
