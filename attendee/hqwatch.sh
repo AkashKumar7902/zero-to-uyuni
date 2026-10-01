@@ -3,7 +3,8 @@
 # (MODE=solo, join.sh --solo) never runs it. While Uyuni HQ is fine it only reads: the minion's log, its saved copy of
 # HQ's key, its lines, and a knock on HQ's door 4506 every 30 s (Salt's door speaks first, so the knock sends nothing).
 # If HQ says no to this sandbox's key (the HQ table seats 8 crews), has not said yes after 10 minutes, or goes quiet
-# (no Salt greeting 3 knocks in a row), it stops the minion and gives this sandbox YOUR OWN HQ (join.sh --solo CREW),
+# (no Salt greeting: 3 knocks in a row before HQ said yes; 10 knocks, about 5 minutes, after it, so a short relay
+# hiccup never costs a crew its seat), it stops the minion and gives this sandbox YOUR OWN HQ (join.sh --solo CREW),
 # with a short note in every terminal. It ends by itself when a newer join.sh runs, and after 2 hours.
 # HQWATCH=0 in join.sh's environment: no watcher. The HQWATCH_* numbers are for the kit's tests.
 set -u
@@ -11,6 +12,7 @@ ID=$1 IP=$2 CREW=$3; D=$(dirname "$0"); R=${SANDBOX_ROOT:-}; SUDO=""; [ "$(id -u
 MODE_FILE=${MODE_FILE:-$R/etc/osas26-mode}; LOG=${MINION_LOG:-/var/log/venv-salt-minion.log}
 PKI=${MINION_PKI:-$R/etc/venv-salt-minion/pki/minion}; OUT=${HQWATCH_LOG:-/tmp/osas26-hqwatch.log}
 TICK=${HQWATCH_TICK:-5} EVERY=${HQWATCH_EVERY:-30} KNOCKS=${HQWATCH_KNOCKS:-3} WAIT_S=${HQWATCH_ACCEPT_S:-600}
+KNOCKS_YES=${HQWATCH_KNOCKS_TRUSTED:-10}   # after HQ's yes: 10 x 30 s. A real outage of the bore.pub relay (1 Oct: > 60 s) is not HQ gone
 size(){ local n; n=$(wc -c < "$LOG" 2>/dev/null) || n=0; echo $((n + 0)); }
 knock(){ timeout 8 bash -c "exec 3<>/dev/tcp/$IP/${HQWATCH_PORT:-4506} && head -c 1 <&3" 2>/dev/null | od -An -tx1 | grep -q ff; }
 trusted(){ [ -s "$PKI/minion_master.pub" ] && ss -Htn state established '( dport = :4505 )' 2>/dev/null | grep -q .; }
@@ -28,12 +30,13 @@ while [ -z "$why" ]; do
     why="has not said yes to this sandbox's key in $((WAIT_S / 60)) minutes"
   elif [ $((now - knocked)) -ge "$EVERY" ]; then
     knocked=$now; if knock; then dark=0; else dark=$((dark + 1)); fi
-    [ "$dark" -lt "$KNOCKS" ] || why="went quiet: no answer on its Salt door, $KNOCKS knocks in a row"
+    lim=$KNOCKS; [ -z "$yes" ] || lim=$KNOCKS_YES
+    [ "$dark" -lt "$lim" ] || why="went quiet: no answer on its Salt door, $lim knocks in a row"
   fi
 done
 say "[HQ table] Uyuni HQ $why." "No problem: this sandbox now gets YOUR OWN HQ, a real Salt master right here (a few seconds)."
 if [ -d "$R/run/systemd/system" ]; then $SUDO systemctl stop venv-salt-minion 2>/dev/null; else $SUDO pkill -f venv-salt-minion 2>/dev/null; fi
-if bash "$D/join.sh" --solo "$CREW" > "$OUT" 2>&1; then
+if { echo "[hqwatch] $(date -u +%FT%TZ) Uyuni HQ $why."; bash "$D/join.sh" --solo "$CREW"; } > "$OUT" 2>&1; then
   say "[YOUR HQ] Ready. Same Salt, same lessons, and you are its admin. Your next step: salt-key -a $(cat "$R/etc/osas26-id")" \
       "Then carry on with the steps for YOUR OWN HQ in this level. (What happened: cat $OUT)"
 else say "[YOUR HQ] It did not start. Raise your HELP sticky: a helper runs /root/osas26/solo.sh status (and reads $OUT)"; fi

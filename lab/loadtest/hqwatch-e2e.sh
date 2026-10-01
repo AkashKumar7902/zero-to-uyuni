@@ -53,6 +53,7 @@ hq start && ok "the stand-in Uyuni HQ (salt-master $("$PY" -c 'import salt.versi
 # ---- the sandbox side: server.env points at the stand-in; the game is off; the notes go to a file ------------------
 printf 'FQDN=uyuni.127-0-0-2.sslip.io\nSERVER_IP=127.0.0.2\nKEY=1-osas26-fleet\nGAME_URL=\nHQ_MASTER_FINGER_TAIL=\nMODE=solo\n' > $K/server.env
 export SERVER_ENV_URL=file://$K/server.env HQWATCH_TTYS=$TTY HQWATCH_LOG=/tmp/hqwatch-e2e.switch.log
+export HQWATCH_KNOCKS_TRUSTED=4   # after the yes: 4 failed knocks here (the kit's default is 10, about 5 min); case 1b needs > 3
 mode(){ cat /etc/osas26-mode 2>/dev/null; }
 myid(){ cat /etc/osas26-id 2>/dev/null; }
 watching(){ pgrep -f "hqwatch.sh $1 " >/dev/null; }
@@ -76,11 +77,18 @@ sleep 95
 [ "$(mode)" = hq ] && [ ! -s $TTY ] && watching "$id" && /usr/local/sbin/hq-standin-cli -t 10 "$id" test.ping 2>/dev/null | grep -q True \
   && ok "95 s later (three knocks answered): still on HQ, no note, HQ's test.ping True" || bad "accepted: mode $(mode), note: $(cat $TTY)"
 
+# 1b. A relay hiccup after the yes (1 Oct dry run: bore.pub dropped > 60 s and the old 3-knock rule moved 4 table crews):
+#     HQ is away ~65 s (up to 3 failed knocks), then back. The crew keeps its HQ seat, and HQ reaches it again.
+systemctl stop osas26-hq-standin; sleep 65; systemctl start osas26-hq-standin
+until_t "/usr/local/sbin/hq-standin-cli -t 10 '$id' test.ping 2>/dev/null | grep -q True" 120
+[ "$(mode)" = hq ] && [ ! -s $TTY ] && watching "$id" \
+  && ok "a 65-s HQ hiccup after the yes: still on HQ, no note, HQ's test.ping True again" || bad "hiccup after the yes: mode $(mode), note: $(cat $TTY)"
+
 # 2. HQ goes quiet later: the minion stops, YOUR OWN HQ by itself, and it really works
 t0=$(date +%s); systemctl stop osas26-hq-standin; switched 200; t1=$(date +%s); nid=$(myid)
 [ "$(mode)" = solo ] && [ "$nid" != "$id" ] && grep -q 'Uyuni HQ went quiet' $TTY && grep -q "Your next step: salt-key -a $nid" $TTY \
   && grep -qx 'master: my-hq.osas26.test' /etc/venv-salt-minion/minion.d/osas26.conf && ! watching "$id" \
-  && ok "HQ went quiet: YOUR OWN HQ by itself, $((t1 - t0)) s after HQ stopped (3 knocks, 30 s apart), with a note" || bad "HQ quiet: $(cat $TTY)"
+  && ok "HQ went quiet: YOUR OWN HQ by itself, $((t1 - t0)) s after HQ stopped (HQWATCH_KNOCKS_TRUSTED=4 knocks, 30 s apart), with a note" || bad "HQ quiet: $(cat $TTY)"
 [ "$(venv-salt-call --local config.get master 2>/dev/null | sed -n 2p | tr -d ' ')" = my-hq.osas26.test ] \
   && ok "the minion's EFFECTIVE master is your own HQ (Uyuni's susemanager.conf line followed)" || bad "effective master after the switch"
 info "the note: $(tr -d '\033' < $TTY | sed 's/\[1;33m//; s/\[0m//' | grep -v '^$' | head -2 | tr '\n' ' ')"
